@@ -39,8 +39,10 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon,
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 SINGLE_INSTANCE_KEY = "com.local.tokage-desktop-pet.single-instance"
+MACOS_NORMAL_WINDOW_LEVEL = 0
+MACOS_FLOATING_WINDOW_LEVEL = 3
 JUMP_HEIGHT = 96
 REACTION_HEIGHT = 22
 REST_HOLD_MS = 4200
@@ -130,6 +132,80 @@ def set_macos_native_window_level(widget: QWidget, level: int) -> bool:
         return True
     except (AttributeError, OSError, TypeError, ValueError):
         return False
+
+
+def set_macos_ignores_mouse_events(widget: QWidget, enabled: bool) -> bool:
+    """Allow clicks through transparent sprite pixels on the native NSWindow."""
+    app = QApplication.instance()
+    if (
+        sys.platform != "darwin"
+        or app is None
+        or app.platformName().lower() != "cocoa"
+    ):
+        return False
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        send_pointer = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        send_void_bool = ctypes.CFUNCTYPE(
+            None,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_bool,
+        )(("objc_msgSend", objc))
+        native_view = ctypes.c_void_p(int(widget.winId()))
+        native_window = send_pointer(native_view, objc.sel_registerName(b"window"))
+        if not native_window:
+            return False
+        send_void_bool(
+            native_window,
+            objc.sel_registerName(b"setIgnoresMouseEvents:"),
+            bool(enabled),
+        )
+        return True
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
+
+
+def macos_ignores_mouse_events(widget: QWidget) -> bool | None:
+    """Read the native NSWindow click-through state for Cocoa validation."""
+    app = QApplication.instance()
+    if (
+        sys.platform != "darwin"
+        or app is None
+        or app.platformName().lower() != "cocoa"
+    ):
+        return None
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        send_pointer = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        send_bool = ctypes.CFUNCTYPE(
+            ctypes.c_bool,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        native_view = ctypes.c_void_p(int(widget.winId()))
+        native_window = send_pointer(native_view, objc.sel_registerName(b"window"))
+        if not native_window:
+            return None
+        return bool(send_bool(native_window, objc.sel_registerName(b"ignoresMouseEvents")))
+    except (AttributeError, OSError, TypeError, ValueError):
+        return None
 
 
 class SingleInstanceGuard(QObject):
@@ -264,6 +340,7 @@ class DesktopPet(QWidget):
                 "Sprite atlas must be 1536x2288 "
                 f"(received {self._atlas.width()}x{self._atlas.height()})"
             )
+        self._atlas_image = self._atlas.toImage()
 
         self._state_name = "idle"
         self._frame_index = 0
@@ -284,10 +361,11 @@ class DesktopPet(QWidget):
         )
         self._default_action = saved_default if saved_default in DEFAULT_ACTION_NAMES else "random"
         self._always_on_top = (
-            bool(self._settings.value("window/alwaysOnTop", True, type=bool))
+            bool(self._settings.value("window/alwaysOnTop", False, type=bool))
             if self._settings is not None
-            else True
+            else False
         )
+        self._mouse_passthrough = False
         self._scale = 1.0
         self._drag_offset: QPoint | None = None
         self._press_global: QPoint | None = None
@@ -315,13 +393,15 @@ class DesktopPet(QWidget):
         self.setMouseTracking(True)
         self._apply_window_flags()
         self.resize(CELL_WIDTH, CELL_HEIGHT)
-        app = QApplication.instance()
-        if app is not None:
-            app.applicationStateChanged.connect(self._handle_application_state_change)
 
         self._window_level_timer = QTimer(self)
         self._window_level_timer.setSingleShot(True)
         self._window_level_timer.timeout.connect(self._refresh_native_window_level)
+
+        self._mouse_hit_test_timer = QTimer(self)
+        self._mouse_hit_test_timer.setInterval(30)
+        self._mouse_hit_test_timer.timeout.connect(self._update_mouse_passthrough)
+        self._mouse_hit_test_timer.start()
 
         self._frame_timer = QTimer(self)
         self._frame_timer.timeout.connect(self._advance_frame)
@@ -401,6 +481,10 @@ class DesktopPet(QWidget):
         return self._always_on_top
 
     @property
+    def mouse_passthrough(self) -> bool:
+        return self._mouse_passthrough
+
+    @property
     def last_jump_height(self) -> int:
         return self._last_jump_height
 
@@ -421,28 +505,50 @@ class DesktopPet(QWidget):
             flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
-    def _handle_application_state_change(self, state: Qt.ApplicationState) -> None:
-        del state
-        if self._always_on_top:
-            self._window_level_timer.start(0)
-
     def _refresh_native_window_level(self) -> None:
-        if self._always_on_top:
-            self._reassert_window_level()
-        elif self.isVisible():
-            set_macos_native_window_level(self, 0)
-
-    def _reassert_window_level(self) -> None:
-        """Keep the native macOS tool window floating without stealing focus."""
-        if not self._always_on_top or not self.isVisible():
+        if not self.isVisible():
             return
-        if not self.windowFlags() & Qt.WindowType.WindowStaysOnTopHint:
-            position = self.pos()
-            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-            self.winId()
-            self.show()
-            self.move(position)
-        self.raise_()
+        level = (
+            MACOS_FLOATING_WINDOW_LEVEL
+            if self._always_on_top
+            else MACOS_NORMAL_WINDOW_LEVEL
+        )
+        set_macos_native_window_level(self, level)
+
+    def _sprite_alpha_at(self, position: QPoint) -> int:
+        if not self.rect().contains(position):
+            return 0
+        row, column = self._current_cell()
+        source_x = column * CELL_WIDTH + min(
+            CELL_WIDTH - 1,
+            max(0, int(position.x() * CELL_WIDTH / max(1, self.width()))),
+        )
+        source_y = row * CELL_HEIGHT + min(
+            CELL_HEIGHT - 1,
+            max(0, int(position.y() * CELL_HEIGHT / max(1, self.height()))),
+        )
+        return self._atlas_image.pixelColor(source_x, source_y).alpha()
+
+    def _set_mouse_passthrough(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if enabled == self._mouse_passthrough:
+            return
+        self._mouse_passthrough = enabled
+        set_macos_ignores_mouse_events(self, enabled)
+
+    def _update_mouse_passthrough(self) -> None:
+        if not self.isVisible() or self._drag_offset is not None:
+            self._set_mouse_passthrough(False)
+            return
+        local_position = self.mapFromGlobal(QCursor.pos())
+        if self.rect().contains(local_position):
+            self._set_mouse_passthrough(self._sprite_alpha_at(local_position) < 24)
+
+    def showEvent(self, event) -> None:  # type: ignore[override]
+        super().showEvent(event)
+        # Reapply after Qt recreates the backing NSWindow for flag changes.
+        set_macos_ignores_mouse_events(self, self._mouse_passthrough)
+        self._window_level_timer.start(0)
 
     def play_state(self, name: str, *, restart: bool = True) -> None:
         if name not in ANIMATIONS:
@@ -963,12 +1069,12 @@ class DesktopPet(QWidget):
             self.move(position)
             if enabled:
                 self.raise_()
-                self._reassert_window_level()
+                set_macos_native_window_level(self, MACOS_FLOATING_WINDOW_LEVEL)
                 self._window_level_timer.start(120)
             else:
                 # Qt.Tool maps to NSFloatingWindowLevel even after the top hint
                 # is removed. Explicitly return it to NSNormalWindowLevel.
-                set_macos_native_window_level(self, 0)
+                set_macos_native_window_level(self, MACOS_NORMAL_WINDOW_LEVEL)
                 self._window_level_timer.start(120)
 
     def set_display_scale(self, scale: float) -> None:
@@ -1408,10 +1514,29 @@ def _schedule_self_test(
             or (
                 native_level_disabled is not None
                 and native_level_enabled is not None
-                and native_level_disabled == 0
-                and native_level_enabled > native_level_disabled
+                and native_level_disabled == MACOS_NORMAL_WINDOW_LEVEL
+                and native_level_enabled == MACOS_FLOATING_WINDOW_LEVEL
             )
         )
+        pet._set_mouse_passthrough(True)
+        native_passthrough_enabled = macos_ignores_mouse_events(pet)
+        pet._set_mouse_passthrough(False)
+        native_passthrough_disabled = macos_ignores_mouse_events(pet)
+        checks["transparent_pixel_alpha"] = pet._sprite_alpha_at(QPoint(0, 0))
+        checks["opaque_pixel_alpha"] = pet._sprite_alpha_at(pet.rect().center())
+        checks["transparent_mouse_passthrough"] = (
+            checks["transparent_pixel_alpha"] < 24
+            and checks["opaque_pixel_alpha"] >= 24
+            and (
+                sys.platform != "darwin"
+                or (
+                    native_passthrough_enabled is True
+                    and native_passthrough_disabled is False
+                )
+            )
+        )
+        checks["native_mouse_passthrough_enabled"] = native_passthrough_enabled
+        checks["native_mouse_passthrough_disabled"] = native_passthrough_disabled
         checks["native_window_recreated"] = int(pet.winId()) != 0 and pet.windowHandle() is not None
         checks["mac_tool_window_stays_visible_when_inactive"] = (
             sys.platform != "darwin"
@@ -1456,6 +1581,7 @@ def _schedule_self_test(
             "top_toggle_keeps_position",
             "always_on_top_reenabled",
             "native_window_level_toggles",
+            "transparent_mouse_passthrough",
             "native_window_recreated",
             "mac_tool_window_stays_visible_when_inactive",
             "menu_bar_top_state_synced",

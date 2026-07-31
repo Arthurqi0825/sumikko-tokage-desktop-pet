@@ -8,7 +8,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QPoint, QSettings, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -159,6 +159,18 @@ class DesktopPetTests(unittest.TestCase):
         self.assertTrue(self.pet.isVisible())
         self.assertEqual(self.pet.pos(), position)
         self.assertNotEqual(native_id, 0)
+
+    def test_transparent_sprite_pixels_are_mouse_passthrough(self) -> None:
+        self.pet.play_state("idle")
+        self.assertEqual(self.pet._sprite_alpha_at(QPoint(0, 0)), 0)
+        self.assertGreaterEqual(
+            self.pet._sprite_alpha_at(self.pet.rect().center()),
+            24,
+        )
+        self.pet._set_mouse_passthrough(True)
+        self.assertTrue(self.pet.mouse_passthrough)
+        self.pet._set_mouse_passthrough(False)
+        self.assertFalse(self.pet.mouse_passthrough)
 
     def test_always_on_top_setting_persists_and_menu_bar_syncs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
