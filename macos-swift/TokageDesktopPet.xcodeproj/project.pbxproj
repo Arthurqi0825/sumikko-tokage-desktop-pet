@@ -1,0 +1,241 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* AppDelegate.swift */; };
+		A10000000000000000000002 /* ControlPanelViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* ControlPanelViewController.swift */; };
+		A10000000000000000000003 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* MenuBarController.swift */; };
+		A10000000000000000000004 /* NativeSelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* NativeSelfTest.swift */; };
+		A10000000000000000000005 /* PetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* PetConstants.swift */; };
+		A10000000000000000000006 /* PetController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* PetController.swift */; };
+		A10000000000000000000007 /* PetPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* PetPanel.swift */; };
+		A10000000000000000000008 /* PetPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* PetPreferences.swift */; };
+		A10000000000000000000009 /* PetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* PetView.swift */; };
+		A1000000000000000000000A /* SpriteAtlas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* SpriteAtlas.swift */; };
+		A1000000000000000000000B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* main.swift */; };
+		A1000000000000000000000C /* spritesheet.webp in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* spritesheet.webp */; };
+		A1000000000000000000000D /* app-icon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* app-icon.icns */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B10000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* ControlPanelViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanelViewController.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* NativeSelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSelfTest.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* PetConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetConstants.swift; sourceTree = "<group>"; };
+		B10000000000000000000006 /* PetController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetController.swift; sourceTree = "<group>"; };
+		B10000000000000000000007 /* PetPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetPanel.swift; sourceTree = "<group>"; };
+		B10000000000000000000008 /* PetPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetPreferences.swift; sourceTree = "<group>"; };
+		B10000000000000000000009 /* PetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000A /* SpriteAtlas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpriteAtlas.swift; sourceTree = "<group>"; };
+		B1000000000000000000000B /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B1000000000000000000000C /* spritesheet.webp */ = {isa = PBXFileReference; lastKnownFileType = image.webp; name = spritesheet.webp; path = ../assets/codex/tokage/spritesheet.webp; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000000D /* app-icon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = "app-icon.icns"; path = "../assets/app-icon.icns"; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1000000000000000000000F /* Tokage Desktop Pet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tokage Desktop Pet.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C10000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D10000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				D10000000000000000000002 /* Sources */,
+				D10000000000000000000003 /* Resources */,
+				D10000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D10000000000000000000002 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* AppDelegate.swift */,
+				B10000000000000000000002 /* ControlPanelViewController.swift */,
+				B10000000000000000000003 /* MenuBarController.swift */,
+				B10000000000000000000004 /* NativeSelfTest.swift */,
+				B10000000000000000000005 /* PetConstants.swift */,
+				B10000000000000000000006 /* PetController.swift */,
+				B10000000000000000000007 /* PetPanel.swift */,
+				B10000000000000000000008 /* PetPreferences.swift */,
+				B10000000000000000000009 /* PetView.swift */,
+				B1000000000000000000000A /* SpriteAtlas.swift */,
+				B1000000000000000000000B /* main.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000003 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B1000000000000000000000E /* Info.plist */,
+				B1000000000000000000000C /* spritesheet.webp */,
+				B1000000000000000000000D /* app-icon.icns */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (B1000000000000000000000F /* Tokage Desktop Pet.app */);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000000000000000000001 /* TokageDesktopPet */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000002 /* Build configuration list for PBXNativeTarget */;
+			buildPhases = (
+				C10000000000000000000002 /* Sources */,
+				C10000000000000000000001 /* Frameworks */,
+				C10000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = TokageDesktopPet;
+			productName = "Tokage Desktop Pet";
+			productReference = B1000000000000000000000F /* Tokage Desktop Pet.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E10000000000000000000002 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = { E10000000000000000000001 = { CreatedOnToolsVersion = 26.0; }; };
+			};
+			buildConfigurationList = F10000000000000000000001 /* Build configuration list for PBXProject */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, zh-Hans);
+			mainGroup = D10000000000000000000001;
+			productRefGroup = D10000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (E10000000000000000000001 /* TokageDesktopPet */);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C10000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000C /* spritesheet.webp in Resources */,
+				A1000000000000000000000D /* app-icon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C10000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* AppDelegate.swift in Sources */,
+				A10000000000000000000002 /* ControlPanelViewController.swift in Sources */,
+				A10000000000000000000003 /* MenuBarController.swift in Sources */,
+				A10000000000000000000004 /* NativeSelfTest.swift in Sources */,
+				A10000000000000000000005 /* PetConstants.swift in Sources */,
+				A10000000000000000000006 /* PetController.swift in Sources */,
+				A10000000000000000000007 /* PetPanel.swift in Sources */,
+				A10000000000000000000008 /* PetPreferences.swift in Sources */,
+				A10000000000000000000009 /* PetView.swift in Sources */,
+				A1000000000000000000000A /* SpriteAtlas.swift in Sources */,
+				A1000000000000000000000B /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F10000000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F10000000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F10000000000000000000021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "arm64 x86_64";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.local.tokage-desktop-pet.native";
+				PRODUCT_NAME = "Tokage Desktop Pet";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F10000000000000000000022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "arm64 x86_64";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.local.tokage-desktop-pet.native";
+				PRODUCT_NAME = "Tokage Desktop Pet";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F10000000000000000000001 /* Build configuration list for PBXProject */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (F10000000000000000000011 /* Debug */, F10000000000000000000012 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10000000000000000000002 /* Build configuration list for PBXNativeTarget */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (F10000000000000000000021 /* Debug */, F10000000000000000000022 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E10000000000000000000002 /* Project object */;
+}

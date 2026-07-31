@@ -1,0 +1,9 @@
+app=/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/dist/swift/Tokage Desktop Pet.app
+dmg=/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/dist/Tokage-Desktop-Pet-Swift-macOS-universal.dmg
+architectures=x86_64 arm64
+minimum_macos=13.0
+app_size=3.5M
+dmg_size=3.3M
+sha256=e48436ce1e88c81945249fda528ee8e948ceca410a5361d285192d0181cbd08e
+python_qt_entries=0
+signature=adhoc

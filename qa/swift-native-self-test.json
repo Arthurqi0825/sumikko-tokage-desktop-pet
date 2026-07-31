@@ -1,0 +1,65 @@
+{
+  "all_passed" : true,
+  "app" : "Tokage Desktop Pet",
+  "checks" : [
+    {
+      "detail" : "1536x2288",
+      "name" : "sprite_atlas_dimensions",
+      "passed" : true
+    },
+    {
+      "detail" : "opaque=false, alpha=0.0",
+      "name" : "transparent_panel",
+      "passed" : true
+    },
+    {
+      "detail" : "hasShadow=false",
+      "name" : "shadow_disabled",
+      "passed" : true
+    },
+    {
+      "detail" : "styleMask=128",
+      "name" : "nonactivating_panel",
+      "passed" : true
+    },
+    {
+      "detail" : "collectionBehavior=337",
+      "name" : "all_spaces_and_fullscreen",
+      "passed" : true
+    },
+    {
+      "detail" : "level=26",
+      "name" : "always_on_top_level",
+      "passed" : true
+    },
+    {
+      "detail" : "visible=true",
+      "name" : "native_status_item",
+      "passed" : true
+    },
+    {
+      "detail" : "requested=19.200000000000003x20.8, AppKit integral frame=20.0x21.0",
+      "name" : "minimum_size_10_percent",
+      "passed" : true
+    },
+    {
+      "detail" : "slowest idle interval=0.48s",
+      "name" : "animation_speed_range",
+      "passed" : true
+    },
+    {
+      "detail" : "north=(row: 9, column: 0), south=(row: 10, column: 0)",
+      "name" : "sixteen_direction_mapping",
+      "passed" : true
+    },
+    {
+      "detail" : "states=idle,running-right,running-left,waving,jumping,failed,resting,waiting,running,review",
+      "name" : "all_animation_states",
+      "passed" : true
+    }
+  ],
+  "minimum_macos" : "13.0",
+  "native_framework" : "AppKit",
+  "timestamp" : "2026-07-31T10:31:27Z",
+  "version" : "2.0.0"
+}

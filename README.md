@@ -4,17 +4,28 @@
 
 仓库同时提供两种使用方式：
 
-- 独立桌宠：运行 `python app.py`，或安装 `dist/Tokage-Desktop-Pet-macOS-arm64.dmg`。
+- 原生 macOS 独立桌宠（推荐）：安装 `dist/Tokage-Desktop-Pet-Swift-macOS-universal.dmg`，或用 Xcode 打开 `macos-swift/TokageDesktopPet.xcodeproj`。
 - Codex 宠物：把 `assets/codex/tokage/` 导入或复制到 `~/.codex/pets/tokage/`。
 
-## 独立桌宠
+## 原生 Swift 独立桌宠
 
-需要 Python 3.10+：
+原生版使用 Swift + AppKit，最低支持 macOS 13，同时包含 Apple Silicon 与 Intel 架构。应用包不包含 Python、PySide、Qt 或 Python runtime，当前 Release 应用约 3.5 MB。
 
-```bash
-python -m pip install -r requirements.txt
-python app.py
+安装：打开以下 DMG，把 `Tokage Desktop Pet.app` 拖入 `Applications`：
+
+```text
+dist/Tokage-Desktop-Pet-Swift-macOS-universal.dmg
 ```
+
+由于当前没有 Apple Developer ID，DMG 内应用采用 adhoc 签名。它可以上传到 GitHub Releases；其他设备首次启动时可能需要右键应用选择“打开”，或在“系统设置 → 隐私与安全性”中允许。消除 Gatekeeper 提示需要 Developer ID 签名和 Apple notarization。
+
+### Xcode 测试
+
+1. 打开 `macos-swift/TokageDesktopPet.xcodeproj`。
+2. 选择 `TokageDesktopPet` scheme 和 `My Mac`。
+3. 按 `Command + R`。
+
+工程最低部署目标为 macOS 13，可在 Xcode 中直接 Debug/Release；无第三方包管理器和 Python 环境依赖。
 
 操作：
 
@@ -26,7 +37,8 @@ python app.py
 - 静态默认姿态：可选择随机动作、静态站立、静态跳跃、静态躺下、静态挥手或静态等待；选择会跨重启保存。
 - 选择静态姿态后，idle 阶段固定显示代表帧；点击、跳跃或拖动动画结束后自动回到该姿态。
 - 右键：可直接选择“躺下休息”等互动，以及暂停、自动随机动作、置顶、大小和复位。
-- 始终置顶：使用标准 macOS 浮动层级；切换到其他应用后会安全恢复前置顺序，但不会抢占键盘焦点或覆盖系统菜单。设置会跨重启保存。
+- 始终置顶：使用原生高窗口层级，不抢占键盘焦点；默认保持在普通窗口之上，设置会跨重启保存。
+- 多桌面与全屏：透明 `NSPanel` 使用 `canJoinAllSpaces + fullScreenAuxiliary + stationary`，可加入所有 macOS Spaces，并显示在全屏应用空间中。
 - 透明区域穿透：鼠标位于角色透明像素时，点击会传递给下方应用，不阻挡正常 macOS 操作。
 - 单实例启动：重复点击应用或再次执行启动命令不会生成第二只宠物，而会显示并提升已经运行的 Tokage。
 - 左右拖动：连续播放对应方向的 8 帧跑动动画，改变方向时即时切换。
@@ -46,29 +58,30 @@ python app.py
 
 应用设置了 `LSUIElement=true`，不会占用 Dock；即使隐藏桌宠，也可通过菜单栏图标或再次点击应用恢复。程序使用本机单实例锁，重复启动不会生成多个桌宠。
 
-独立桌宠直接读取 `assets/codex/tokage/spritesheet.webp`，使用全部 9 个动作行和 16 个方向姿态。
+原生独立桌宠从 App Bundle 读取 `spritesheet.webp`，使用全部 9 个动作行和 16 个方向姿态。
 
 ### 编辑动画基准速度
 
-日常使用直接调整“动画速度”滑动条即可。如果要修改程序的出厂节奏，可编辑 `src/desktop_pet.py` 中的 `ANIMATIONS`：`interval_ms` 表示每帧间隔，数值越大动作越慢。运行时实际间隔为 `interval_ms ÷ 动画速度倍率`，因此 50% 会播放为两倍时长，200% 会播放为一半时长。
+日常使用直接调整“动画速度”滑动条即可。如果要修改程序的出厂节奏，可编辑 `macos-swift/Sources/PetConstants.swift` 中各动作的 `intervalMilliseconds`：数值越大动作越慢。运行时实际间隔为 `intervalMilliseconds ÷ 动画速度倍率`，因此 50% 会播放为两倍时长，200% 会播放为一半时长。
 
 ### 打包 macOS 应用与 DMG
 
-需要 macOS、Python 3.10+、Xcode Command Line Tools：
+需要 macOS 和完整 Xcode：
 
 ```bash
-chmod +x scripts/build_macos.sh
-./scripts/build_macos.sh
+./macos-swift/scripts/build_dmg.sh
 ```
 
 输出：
 
 ```text
-dist/macos/Tokage Desktop Pet.app
-dist/Tokage-Desktop-Pet-macOS-arm64.dmg
+dist/swift/Tokage Desktop Pet.app
+dist/Tokage-Desktop-Pet-Swift-macOS-universal.dmg
 ```
 
-构建脚本完成 PyInstaller 打包、隐藏 Dock 图标、adhoc codesign、`.app` 严格校验、DMG 创建与 `hdiutil verify`。公开分发仍需使用 Apple Developer ID 签名并完成 notarization；adhoc 签名版本适合本机测试和个人使用。
+构建脚本完成 Universal 2 Release 编译、隐藏 Dock 图标、adhoc codesign、原生运行时自测、Python/Qt 缺失检查、DMG 创建和 `hdiutil verify`。可继续执行 `./macos-swift/scripts/validate_dmg.sh`，验证从 DMG 挂载、复制到新位置后仍能正常启动。
+
+旧 Python/PySide 实现仍保留为迁移参考，可运行 `python app.py` 或执行 `scripts/build_macos.sh` 构建旧版；GitHub Release 应优先使用新的 Swift Universal 2 DMG。
 
 ## 导入 Codex
 
@@ -96,6 +109,7 @@ assets/
 ├── standalone/        # 独立桌宠 GIF 与清单
 └── codex/tokage/      # 可导入 Codex 的 v2 宠物包
 qa/                    # 联系表、方向检查表、动画预览和验证结果
+macos-swift/           # Swift/AppKit 源码、Xcode 工程、自测与 DMG 脚本
 src/                   # 独立桌宠窗口实现
 tests/                 # Qt 状态机与交互自动化测试
 scripts/build_macos.sh # .app 与 .dmg 构建/验证
