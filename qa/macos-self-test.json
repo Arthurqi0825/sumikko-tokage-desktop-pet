@@ -1,0 +1,71 @@
+{
+  "app": "Tokage Desktop Pet",
+  "version": "1.0.0",
+  "environment": {
+    "macOS": "26.5",
+    "architecture": "arm64",
+    "PySide6": "6.11.1",
+    "PyInstaller": "6.21.0"
+  },
+  "atlas": {
+    "width": 1536,
+    "height": 2288
+  },
+  "checks": {
+    "animation_progressed": true,
+    "single_click_state": true,
+    "single_click_particles": true,
+    "double_click_state": true,
+    "double_click_particles": true,
+    "drag_delta": [-36, -24],
+    "drag_state_returned_idle": true,
+    "look_direction_cells": [
+      [9, 0],
+      [9, 1],
+      [9, 2],
+      [9, 3],
+      [9, 4],
+      [9, 5],
+      [9, 6],
+      [9, 7],
+      [10, 0],
+      [10, 1],
+      [10, 2],
+      [10, 3],
+      [10, 4],
+      [10, 5],
+      [10, 6],
+      [10, 7]
+    ],
+    "look_directions_complete": true,
+    "context_menu_labels": [
+      "互动动作",
+      "暂停动画",
+      "自动随机动作",
+      "始终置顶",
+      "显示大小",
+      "回到右下角",
+      "关于 Tokage Desktop Pet",
+      "退出"
+    ],
+    "interaction_labels": [
+      "挥手",
+      "跳一跳",
+      "等待",
+      "认真工作",
+      "检查成果",
+      "有点难过",
+      "环顾四周",
+      "随机动作"
+    ],
+    "context_menu_complete": true,
+    "scaled_size": [240, 260],
+    "paused": true,
+    "resumed": true,
+    "transparent_background": true,
+    "frameless": true,
+    "always_on_top": true,
+    "tool_window": true,
+    "all_passed": true
+  }
+}

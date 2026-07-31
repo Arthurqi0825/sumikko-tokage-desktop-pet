@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "spriteVersionNumber": 2,
+  "pet_id": "tokage",
+  "run_dir": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run",
+  "spritesheet": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/final/spritesheet-extended.webp",
+  "validation": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/final/validation-extended.json",
+  "chroma_despill": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/chroma-despill-extended.json",
+  "contact_sheet": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/contact-sheet-extended.png",
+  "direction_sheet": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/look-directions.png",
+  "direction_semantics": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/direction-semantics.json",
+  "blind_direction_validation": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/direction-blind-validation.json",
+  "continuity": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/look-continuity.json",
+  "review": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/qa/review.json",
+  "package": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/assets/codex/tokage"
+}

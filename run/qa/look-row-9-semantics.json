@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "row": "look-row-9",
+  "reviewed_at_normal_size": true,
+  "registration": "pass",
+  "edge_check": "pass",
+  "continuity": "pass",
+  "directions": [
+    {"direction": "000", "verdict": "pass", "observed": "face high and centered; upper body stretched upward"},
+    {"direction": "022.5", "verdict": "pass", "observed": "face begins a small screen-right shift while remaining high"},
+    {"direction": "045", "verdict": "pass", "observed": "clear up-right face and upper-body yaw"},
+    {"direction": "067.5", "verdict": "pass", "observed": "rightward cue strengthens evenly while height remains above neutral"},
+    {"direction": "090", "verdict": "pass", "observed": "side-facing screen-right profile with snout right of center"},
+    {"direction": "112.5", "verdict": "pass", "observed": "right profile begins a smooth downward bow"},
+    {"direction": "135", "verdict": "pass", "observed": "clear down-right face and body bend"},
+    {"direction": "157.5", "verdict": "pass", "observed": "one smooth step before down; no snap or scale pop"}
+  ],
+  "notes": "All eight registered cells preserve identity, baseline, body scale, dorsal-plate attachment, and a monotonic clockwise face/body progression."
+}

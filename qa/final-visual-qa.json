@@ -1,0 +1,6 @@
+{
+  "visual_qa": "pass",
+  "qa_note": "Rows 0-8 preserve Tokage's identity, style, palette, silhouette, face, and proportions while clearly expressing each intended animation; all structural, v2, blind-direction, and chroma validations pass.",
+  "repair_rows": [],
+  "repair_notes": null
+}

@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "reviewed_by": "independent-final-visual-qa-worker",
+  "directions": [
+    {"direction": "000", "verdict": "pass", "expected": "up", "observed": "horizontal centered; vertical clearly up", "reason": "Eyes and face sit high on the stretched upright body."},
+    {"direction": "022.5", "verdict": "warning", "expected": "up-right", "observed": "horizontal right cue subtle; vertical clearly up", "reason": "Labeled loop and adjacent frames confirm the first clockwise step despite blind horizontal ambiguity."},
+    {"direction": "045", "verdict": "pass", "expected": "up-right", "observed": "horizontal screen-right; vertical up", "reason": "Eye, snout, and upper-body yaw occupy the up-right quadrant."},
+    {"direction": "067.5", "verdict": "pass", "expected": "up-right", "observed": "horizontal screen-right; vertical up", "reason": "Right-facing profile strengthens while the face remains high."},
+    {"direction": "090", "verdict": "pass", "expected": "right", "observed": "horizontal full screen-right profile; vertical neutral", "reason": "Eye and snout sit unmistakably on the screen-right contour."},
+    {"direction": "112.5", "verdict": "pass", "expected": "down-right", "observed": "horizontal screen-right; vertical down", "reason": "Right profile begins a clear downward bow."},
+    {"direction": "135", "verdict": "pass", "expected": "down-right", "observed": "horizontal screen-right; vertical down", "reason": "Face and upper body occupy the down-right quadrant."},
+    {"direction": "157.5", "verdict": "pass", "expected": "down-right", "observed": "horizontal screen-right; vertical down", "reason": "Deep rightward bow remains one coherent step before the down cardinal."},
+    {"direction": "180", "verdict": "pass", "expected": "down", "observed": "horizontal centered; vertical clearly down", "reason": "Both eyes and mouth sit low over the belly on a centered bowed body."},
+    {"direction": "202.5", "verdict": "warning", "expected": "down-left", "observed": "horizontal left cue subtle; vertical clearly down", "reason": "Labeled loop and adjacent frames confirm the first leftward step despite blind horizontal ambiguity."},
+    {"direction": "225", "verdict": "pass", "expected": "down-left", "observed": "horizontal screen-left; vertical down", "reason": "Eye, snout, and upper-body bow occupy the down-left quadrant."},
+    {"direction": "247.5", "verdict": "pass", "expected": "down-left", "observed": "horizontal screen-left; vertical down", "reason": "Left cue strengthens smoothly while the face remains lowered."},
+    {"direction": "270", "verdict": "pass", "expected": "left", "observed": "horizontal full screen-left profile; vertical neutral", "reason": "Eye and snout sit unmistakably on the screen-left contour."},
+    {"direction": "292.5", "verdict": "pass", "expected": "up-left", "observed": "horizontal screen-left; vertical up", "reason": "Left profile rises into the up-left quadrant."},
+    {"direction": "315", "verdict": "pass", "expected": "up-left", "observed": "horizontal screen-left; vertical up", "reason": "Face and upper body remain clearly up-left."},
+    {"direction": "337.5", "verdict": "pass", "expected": "up-left", "observed": "horizontal screen-left; vertical up", "reason": "Final pose lands one coherent step before the centered up cardinal."}
+  ],
+  "review_warnings": [
+    "Accepted subtle horizontal cues at 022.5 and 202.5 because labeled neighboring poses confirm the intended quadrants.",
+    "Accepted continuity metric outliers at 022.5->045, 157.5->180, and 270->292.5 because normal-size review shows no conspicuous snap, scale pop, identity change, wrong quadrant, or reversal."
+  ]
+}

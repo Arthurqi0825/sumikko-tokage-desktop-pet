@@ -1,0 +1,2 @@
+"""Tokage desktop pet application."""
+

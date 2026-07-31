@@ -1,0 +1,973 @@
+{
+  "ok": true,
+  "frames_root": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames",
+  "states": [
+    "idle",
+    "running-right",
+    "running-left",
+    "waving",
+    "jumping",
+    "failed",
+    "waiting",
+    "running",
+    "review"
+  ],
+  "errors": [],
+  "warnings": [],
+  "rows": [
+    {
+      "state": "idle",
+      "expected_frames": 6,
+      "actual_frames": 6,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29722,
+          "bbox": [
+            5,
+            7,
+            187,
+            200
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 367
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29660,
+          "bbox": [
+            5,
+            8,
+            187,
+            200
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 346
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28626,
+          "bbox": [
+            5,
+            10,
+            187,
+            198
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 351
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30071,
+          "bbox": [
+            5,
+            6,
+            187,
+            201
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 367
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29178,
+          "bbox": [
+            5,
+            9,
+            187,
+            199
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 382
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/idle/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30358,
+          "bbox": [
+            5,
+            5,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 402
+        }
+      ]
+    },
+    {
+      "state": "running-right",
+      "expected_frames": 8,
+      "actual_frames": 8,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26556,
+          "bbox": [
+            5,
+            9,
+            187,
+            198
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 499
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26697,
+          "bbox": [
+            6,
+            5,
+            186,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 452
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26372,
+          "bbox": [
+            9,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 449
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26805,
+          "bbox": [
+            5,
+            5,
+            187,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 424
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27205,
+          "bbox": [
+            7,
+            5,
+            184,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 430
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26229,
+          "bbox": [
+            10,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 445
+        },
+        {
+          "index": 6,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/06.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26147,
+          "bbox": [
+            9,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 408
+        },
+        {
+          "index": 7,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-right/07.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26639,
+          "bbox": [
+            6,
+            5,
+            185,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 462
+        }
+      ]
+    },
+    {
+      "state": "running-left",
+      "expected_frames": 8,
+      "actual_frames": 8,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26556,
+          "bbox": [
+            5,
+            9,
+            187,
+            198
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 499
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26697,
+          "bbox": [
+            6,
+            5,
+            186,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 452
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26372,
+          "bbox": [
+            9,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 449
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26805,
+          "bbox": [
+            5,
+            5,
+            187,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 424
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27205,
+          "bbox": [
+            7,
+            5,
+            184,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 430
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26229,
+          "bbox": [
+            10,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 445
+        },
+        {
+          "index": 6,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/06.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26147,
+          "bbox": [
+            9,
+            5,
+            182,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 408
+        },
+        {
+          "index": 7,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running-left/07.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26639,
+          "bbox": [
+            6,
+            5,
+            185,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 462
+        }
+      ]
+    },
+    {
+      "state": "waving",
+      "expected_frames": 4,
+      "actual_frames": 4,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waving/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29766,
+          "bbox": [
+            5,
+            6,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 246
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waving/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29822,
+          "bbox": [
+            5,
+            6,
+            187,
+            201
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 270
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waving/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 25130,
+          "bbox": [
+            5,
+            15,
+            187,
+            192
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 209
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waving/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29849,
+          "bbox": [
+            5,
+            5,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 286
+        }
+      ]
+    },
+    {
+      "state": "jumping",
+      "expected_frames": 5,
+      "actual_frames": 5,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/jumping/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27113,
+          "bbox": [
+            5,
+            13,
+            187,
+            194
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 307
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/jumping/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28257,
+          "bbox": [
+            5,
+            11,
+            187,
+            196
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 278
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/jumping/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28248,
+          "bbox": [
+            5,
+            11,
+            187,
+            196
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 332
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/jumping/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28155,
+          "bbox": [
+            5,
+            11,
+            187,
+            196
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 307
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/jumping/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27581,
+          "bbox": [
+            5,
+            12,
+            187,
+            195
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 318
+        }
+      ]
+    },
+    {
+      "state": "failed",
+      "expected_frames": 8,
+      "actual_frames": 8,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28347,
+          "bbox": [
+            10,
+            5,
+            181,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 390
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29921,
+          "bbox": [
+            5,
+            5,
+            186,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 394
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28246,
+          "bbox": [
+            5,
+            12,
+            187,
+            196
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 476
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 23269,
+          "bbox": [
+            5,
+            27,
+            187,
+            180
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 380
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 17841,
+          "bbox": [
+            5,
+            45,
+            187,
+            163
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 370
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 21440,
+          "bbox": [
+            5,
+            32,
+            187,
+            176
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 322
+        },
+        {
+          "index": 6,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/06.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27397,
+          "bbox": [
+            5,
+            13,
+            187,
+            194
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 372
+        },
+        {
+          "index": 7,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/failed/07.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30064,
+          "bbox": [
+            6,
+            5,
+            186,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 428
+        }
+      ]
+    },
+    {
+      "state": "waiting",
+      "expected_frames": 6,
+      "actual_frames": 6,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30450,
+          "bbox": [
+            5,
+            5,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 298
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 24835,
+          "bbox": [
+            5,
+            19,
+            187,
+            189
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 247
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30027,
+          "bbox": [
+            5,
+            7,
+            187,
+            201
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 284
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 25604,
+          "bbox": [
+            5,
+            15,
+            187,
+            192
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 299
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 24925,
+          "bbox": [
+            5,
+            19,
+            187,
+            189
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 244
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/waiting/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30381,
+          "bbox": [
+            5,
+            5,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 309
+        }
+      ]
+    },
+    {
+      "state": "running",
+      "expected_frames": 6,
+      "actual_frames": 6,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28942,
+          "bbox": [
+            8,
+            5,
+            183,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 319
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29022,
+          "bbox": [
+            5,
+            7,
+            187,
+            200
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 321
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26398,
+          "bbox": [
+            5,
+            15,
+            187,
+            192
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 329
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 26626,
+          "bbox": [
+            5,
+            12,
+            187,
+            195
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 306
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 30106,
+          "bbox": [
+            5,
+            5,
+            187,
+            202
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 371
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/running/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 28863,
+          "bbox": [
+            9,
+            5,
+            183,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 301
+        }
+      ]
+    },
+    {
+      "state": "review",
+      "expected_frames": 6,
+      "actual_frames": 6,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29652,
+          "bbox": [
+            7,
+            5,
+            184,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 335
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29895,
+          "bbox": [
+            5,
+            5,
+            187,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 366
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29159,
+          "bbox": [
+            9,
+            5,
+            183,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 351
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 27359,
+          "bbox": [
+            15,
+            5,
+            176,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 304
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29416,
+          "bbox": [
+            5,
+            7,
+            187,
+            201
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 310
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/run/frames/review/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 29872,
+          "bbox": [
+            7,
+            5,
+            185,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 346
+        }
+      ]
+    }
+  ]
+}
