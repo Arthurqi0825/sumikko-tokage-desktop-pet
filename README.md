@@ -39,6 +39,7 @@ dist/Tokage-Desktop-Pet-Swift-macOS-universal.dmg
 - 右键：可直接选择“躺下休息”等互动，以及暂停、自动随机动作、置顶、大小和复位。
 - 始终置顶：使用原生高窗口层级，不抢占键盘焦点；默认保持在普通窗口之上，设置会跨重启保存。
 - 多桌面与全屏：透明 `NSPanel` 使用 `canJoinAllSpaces + fullScreenAuxiliary + stationary`，可加入所有 macOS Spaces，并显示在全屏应用空间中。
+- 图标统一：Finder、应用包与顶部菜单栏控制均使用同一个 `assets/app-icon.icns` 彩色 Tokage 图标。
 - 透明区域穿透：鼠标位于角色透明像素时，点击会传递给下方应用，不阻挡正常 macOS 操作。
 - 单实例启动：重复点击应用或再次执行启动命令不会生成第二只宠物，而会显示并提升已经运行的 Tokage。
 - 左右拖动：连续播放对应方向的 8 帧跑动动画，改变方向时即时切换。

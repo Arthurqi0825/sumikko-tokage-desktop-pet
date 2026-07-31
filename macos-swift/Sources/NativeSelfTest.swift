@@ -28,6 +28,7 @@ enum NativeSelfTest {
         pet.setAlwaysOnTop(true)
         check("always_on_top_level", pet.panel.level.rawValue > NSWindow.Level.statusBar.rawValue, "level=\(pet.panel.level.rawValue)")
         check("native_status_item", menuBar.statusItem.isVisible && menuBar.statusItem.button?.image != nil, "visible=\(menuBar.statusItem.isVisible)")
+        check("shared_app_and_status_icon", menuBar.statusIconUsesAppIcon, "status icon source=app-icon.icns")
 
         pet.setDisplayScale(PetConstants.minimumScale)
         let expectedWidth = CGFloat(PetConstants.cellWidth) * PetConstants.minimumScale

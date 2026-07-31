@@ -16,6 +16,7 @@ The app is a menu-bar accessory. Its pet panel is transparent, ignores clicks on
 - Drag: animated left/right running.
 - Right click: interaction and settings menu.
 - Native menu-bar control panel with action, speed, size, default-action, visibility, auto-action, and always-on-top controls.
+- Finder, application bundle, and menu-bar control use the same bundled `app-icon.icns` artwork.
 - Display scale: 10%–200%; animation speed: 50%–200%.
 - Static defaults: idle, jump, rest, wave, and wait.
 - Single running instance per user session.

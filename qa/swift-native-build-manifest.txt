@@ -4,6 +4,6 @@ architectures=x86_64 arm64
 minimum_macos=13.0
 app_size=3.5M
 dmg_size=3.3M
-sha256=e48436ce1e88c81945249fda528ee8e948ceca410a5361d285192d0181cbd08e
+sha256=a4879626a55e5a2a7ead4dcae692309ffa6b23ff85fd4caef523b7347a4a1af1
 python_qt_entries=0
 signature=adhoc

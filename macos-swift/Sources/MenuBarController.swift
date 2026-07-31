@@ -4,6 +4,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     let statusItem: NSStatusItem
     let popover = NSPopover()
     let controlPanel: ControlPanelViewController
+    private(set) var statusIconUsesAppIcon = false
 
     private let petController: PetController
 
@@ -44,20 +45,21 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func makeStatusIcon() -> NSImage? {
-        let source = try? petController.atlas.frame(row: 0, column: 0).image
-        guard let source else {
+        guard let iconURL = Bundle.main.url(forResource: "app-icon", withExtension: "icns"),
+              let source = NSImage(contentsOf: iconURL) else {
             return NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "蜥蜴桌宠")
         }
+        statusIconUsesAppIcon = true
         let icon = NSImage(size: NSSize(width: 18, height: 18))
         icon.lockFocus()
         source.draw(
-            in: NSRect(x: 1, y: 0, width: 16, height: 18),
+            in: NSRect(x: 1, y: 1, width: 16, height: 16),
             from: .zero,
             operation: .sourceOver,
             fraction: 1
         )
         icon.unlockFocus()
-        icon.isTemplate = true
+        icon.isTemplate = false
         return icon
     }
 }

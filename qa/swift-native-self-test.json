@@ -38,6 +38,11 @@
       "passed" : true
     },
     {
+      "detail" : "status icon source=app-icon.icns",
+      "name" : "shared_app_and_status_icon",
+      "passed" : true
+    },
+    {
       "detail" : "requested=19.200000000000003x20.8, AppKit integral frame=20.0x21.0",
       "name" : "minimum_size_10_percent",
       "passed" : true
@@ -60,6 +65,6 @@
   ],
   "minimum_macos" : "13.0",
   "native_framework" : "AppKit",
-  "timestamp" : "2026-07-31T10:31:27Z",
+  "timestamp" : "2026-07-31T12:30:48Z",
   "version" : "2.0.0"
 }
