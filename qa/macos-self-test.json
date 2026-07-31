@@ -1,13 +1,8 @@
 {
   "app": "Tokage Desktop Pet",
-  "version": "1.4.0",
-  "environment": {
-    "macOS": "26.5",
-    "architecture": "arm64",
-    "PySide6": "6.11.1",
-    "PyInstaller": "6.21.0"
-  },
+  "version": "1.5.0",
   "atlas": {
+    "path": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/dist/macos/Tokage Desktop Pet.app/Contents/Frameworks/assets/codex/tokage/spritesheet.webp",
     "width": 1536,
     "height": 2288
   },
@@ -25,51 +20,134 @@
     "double_click_feedback_rings": 3,
     "jump_peak_height": 96,
     "jump_is_visibly_high": true,
-    "drag_delta": [-36, -24],
     "drag_animation_progressed": true,
+    "drag_delta": [
+      -36,
+      -24
+    ],
     "drag_state_returned_idle": true,
     "rest_settling_cells": [
-      [5, 0],
-      [5, 1],
-      [5, 2],
-      [5, 3],
-      [5, 4]
+      [
+        5,
+        0
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        5,
+        2
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        5,
+        4
+      ]
     ],
     "rest_lies_down": true,
     "rest_breathes_while_sleeping": true,
     "rest_waking_cells": [
-      [5, 5],
-      [5, 6],
-      [5, 7],
-      [0, 0]
+      [
+        5,
+        5
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        0,
+        0
+      ]
     ],
     "rest_returns_idle": true,
+    "duplicate_instance_blocked": true,
+    "duplicate_instance_activates_existing": true,
     "look_direction_cells": [
-      [9, 0],
-      [9, 1],
-      [9, 2],
-      [9, 3],
-      [9, 4],
-      [9, 5],
-      [9, 6],
-      [9, 7],
-      [10, 0],
-      [10, 1],
-      [10, 2],
-      [10, 3],
-      [10, 4],
-      [10, 5],
-      [10, 6],
-      [10, 7]
+      [
+        9,
+        0
+      ],
+      [
+        9,
+        1
+      ],
+      [
+        9,
+        2
+      ],
+      [
+        9,
+        3
+      ],
+      [
+        9,
+        4
+      ],
+      [
+        9,
+        5
+      ],
+      [
+        9,
+        6
+      ],
+      [
+        9,
+        7
+      ],
+      [
+        10,
+        0
+      ],
+      [
+        10,
+        1
+      ],
+      [
+        10,
+        2
+      ],
+      [
+        10,
+        3
+      ],
+      [
+        10,
+        4
+      ],
+      [
+        10,
+        5
+      ],
+      [
+        10,
+        6
+      ],
+      [
+        10,
+        7
+      ]
     ],
     "look_directions_complete": true,
     "context_menu_labels": [
       "互动动作",
+      "默认动作",
+      "",
       "暂停动画",
-      "自动随机动作",
+      "启用自动动作",
       "始终置顶",
       "显示大小",
       "回到右下角",
+      "",
       "关于 Tokage Desktop Pet",
       "退出"
     ],
@@ -84,7 +162,6 @@
       "环顾四周",
       "随机动作"
     ],
-    "context_menu_complete": true,
     "context_default_action_labels": [
       "随机动作",
       "静态站立",
@@ -93,6 +170,7 @@
       "静态挥手",
       "静态等待"
     ],
+    "context_menu_complete": true,
     "context_default_action_selected": true,
     "menu_bar_available": true,
     "menu_bar_visible": true,
@@ -119,7 +197,6 @@
       "环顾四周",
       "随机动作"
     ],
-    "menu_bar_controls_complete": true,
     "menu_bar_default_action_labels": [
       "随机动作",
       "静态站立",
@@ -131,19 +208,48 @@
     "menu_bar_default_action_selected": true,
     "default_action_menus_complete": true,
     "default_action_sync": true,
+    "menu_bar_controls_complete": true,
     "static_default_pose_cells": {
-      "idle": [0, 0],
-      "jumping": [4, 2],
-      "resting": [5, 4],
-      "waving": [3, 2],
-      "waiting": [6, 3]
+      "idle": [
+        0,
+        0
+      ],
+      "jumping": [
+        4,
+        2
+      ],
+      "resting": [
+        5,
+        4
+      ],
+      "waving": [
+        3,
+        2
+      ],
+      "waiting": [
+        6,
+        3
+      ]
     },
     "static_default_poses_complete": true,
     "static_default_pose_timers_stopped": true,
     "interaction_returns_to_static_default": true,
-    "scaled_size": [240, 260],
+    "scaled_size": [
+      240,
+      260
+    ],
     "paused": true,
     "resumed": true,
+    "always_on_top_disabled": true,
+    "top_toggle_keeps_visible": true,
+    "top_toggle_keeps_position": true,
+    "always_on_top_reenabled": true,
+    "native_window_level_disabled": 0,
+    "native_window_level_enabled": 8,
+    "native_window_level_toggles": true,
+    "native_window_recreated": true,
+    "mac_tool_window_stays_visible_when_inactive": true,
+    "menu_bar_top_state_synced": true,
     "transparent_background": true,
     "frameless": true,
     "always_on_top": true,

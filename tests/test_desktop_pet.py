@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -18,6 +19,7 @@ from src.desktop_pet import (
     DEFAULT_ATLAS,
     DesktopPet,
     MenuBarController,
+    SingleInstanceGuard,
 )
 
 
@@ -124,7 +126,7 @@ class DesktopPetTests(unittest.TestCase):
             expected = (9, index) if index < 8 else (10, index - 8)
             self.assertEqual(self.pet._current_cell(), expected)
 
-    def test_pause_auto_top_and_scale_controls(self) -> None:
+    def test_pause_auto_and_scale_controls(self) -> None:
         self.pet.toggle_pause()
         self.assertTrue(self.pet.paused)
         frame = self.pet.frame_index
@@ -134,12 +136,64 @@ class DesktopPetTests(unittest.TestCase):
         self.assertFalse(self.pet.paused)
         self.pet.set_auto_actions(True)
         self.assertTrue(self.pet.auto_actions_enabled)
-        self.pet.set_always_on_top(False)
-        self.assertFalse(self.pet._always_on_top)
         self.pet.set_display_scale(1.25)
         self.assertEqual(self.pet.display_scale, 1.25)
         self.assertEqual(self.pet.size().width(), 240)
         self.assertEqual(self.pet.size().height(), 260)
+
+    def test_always_on_top_toggle_keeps_native_window_visible_and_positioned(self) -> None:
+        position = self.pet.pos()
+        native_id = int(self.pet.winId())
+        self.pet.set_always_on_top(False, persist=False)
+        self.app.processEvents()
+        self.assertFalse(self.pet.always_on_top)
+        self.assertFalse(self.pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.assertTrue(self.pet.isVisible())
+        self.assertEqual(self.pet.pos(), position)
+        self.assertNotEqual(int(self.pet.winId()), 0)
+
+        self.pet.set_always_on_top(True, persist=False)
+        self.app.processEvents()
+        self.assertTrue(self.pet.always_on_top)
+        self.assertTrue(self.pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.assertTrue(self.pet.isVisible())
+        self.assertEqual(self.pet.pos(), position)
+        self.assertNotEqual(native_id, 0)
+
+    def test_always_on_top_setting_persists_and_menu_bar_syncs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "settings.ini"
+            settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+            first = DesktopPet(DEFAULT_ATLAS, settings=settings)
+            first.set_always_on_top(False)
+            first.close()
+
+            second = DesktopPet(
+                DEFAULT_ATLAS,
+                settings=QSettings(str(settings_path), QSettings.Format.IniFormat),
+            )
+            self.assertFalse(second.always_on_top)
+            controller = MenuBarController(self.app, second, show_icon=False)
+            controller._sync_state()
+            self.assertFalse(controller.top_action.isChecked())
+            second.set_always_on_top(True)
+            controller._sync_state()
+            self.assertTrue(controller.top_action.isChecked())
+            second.close()
+
+    def test_single_instance_guard_blocks_duplicate_and_activates_first(self) -> None:
+        key = f"tokage-test-{uuid.uuid4()}"
+        first = SingleInstanceGuard(key)
+        activated: list[bool] = []
+        first.activation_requested.connect(lambda: activated.append(True))
+        if not first.acquire():
+            self.skipTest("The current sandbox does not permit local IPC sockets")
+
+        second = SingleInstanceGuard(key)
+        self.assertFalse(second.acquire())
+        QTest.qWait(80)
+        self.assertEqual(activated, [True])
+        first.close()
 
     def test_default_action_controls_scheduler_and_persists(self) -> None:
         self.pet.set_default_action("jumping", persist=False)

@@ -9,14 +9,19 @@ from pathlib import Path
 
 from PySide6.QtCore import (
     QAbstractAnimation,
+    QLockFile,
+    QObject,
     QPoint,
     QPointF,
     QRectF,
     QSettings,
+    Signal,
+    QStandardPaths,
     Qt,
     QTimer,
     QVariantAnimation,
 )
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtGui import (
     QAction,
     QActionGroup,
@@ -34,7 +39,8 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon,
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
+SINGLE_INSTANCE_KEY = "com.local.tokage-desktop-pet.single-instance"
 JUMP_HEIGHT = 96
 REACTION_HEIGHT = 22
 REST_HOLD_MS = 4200
@@ -54,6 +60,138 @@ DEFAULT_POSE_CELLS = {
     "waving": (3, 2),
     "waiting": (6, 3),
 }
+
+
+def macos_native_window_level(widget: QWidget) -> int | None:
+    """Return the backing NSWindow level for Cocoa runtime validation."""
+    app = QApplication.instance()
+    if (
+        sys.platform != "darwin"
+        or app is None
+        or app.platformName().lower() != "cocoa"
+    ):
+        return None
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        send_pointer = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        send_integer = ctypes.CFUNCTYPE(
+            ctypes.c_long,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        native_view = ctypes.c_void_p(int(widget.winId()))
+        native_window = send_pointer(native_view, objc.sel_registerName(b"window"))
+        if not native_window:
+            return None
+        return int(send_integer(native_window, objc.sel_registerName(b"level")))
+    except (AttributeError, OSError, TypeError, ValueError):
+        return None
+
+
+def set_macos_native_window_level(widget: QWidget, level: int) -> bool:
+    """Set the backing NSWindow level without adding a PyObjC dependency."""
+    app = QApplication.instance()
+    if (
+        sys.platform != "darwin"
+        or app is None
+        or app.platformName().lower() != "cocoa"
+    ):
+        return False
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        send_pointer = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        send_void_integer = ctypes.CFUNCTYPE(
+            None,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_long,
+        )(("objc_msgSend", objc))
+        native_view = ctypes.c_void_p(int(widget.winId()))
+        native_window = send_pointer(native_view, objc.sel_registerName(b"window"))
+        if not native_window:
+            return False
+        send_void_integer(native_window, objc.sel_registerName(b"setLevel:"), int(level))
+        return True
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
+
+
+class SingleInstanceGuard(QObject):
+    """Prevent duplicate pets and wake the already-running instance."""
+
+    activation_requested = Signal()
+
+    def __init__(self, key: str = SINGLE_INSTANCE_KEY) -> None:
+        super().__init__()
+        self.key = key
+        lock_path = Path(QStandardPaths.writableLocation(QStandardPaths.TempLocation)) / f"{key}.lock"
+        self.lock = QLockFile(str(lock_path))
+        self.lock.setStaleLockTime(0)
+        self.server = QLocalServer(self)
+        self.server.newConnection.connect(self._accept_connections)
+
+    def acquire(self) -> bool:
+        if not self.lock.tryLock(0):
+            self._notify_existing_instance()
+            return False
+
+        # The lock is atomic; removing a stale server path cannot race another
+        # process into creating a second pet.
+        QLocalServer.removeServer(self.key)
+        if self.server.listen(self.key):
+            return True
+        self.lock.unlock()
+        return False
+
+    def _notify_existing_instance(self) -> None:
+        probe = QLocalSocket()
+        probe.connectToServer(self.key)
+        if probe.waitForConnected(250):
+            probe.write(b"activate\n")
+            probe.waitForBytesWritten(250)
+            probe.disconnectFromServer()
+
+    def close(self) -> None:
+        was_listening = self.server.isListening()
+        self.server.close()
+        if was_listening:
+            QLocalServer.removeServer(self.key)
+        if self.lock.isLocked():
+            self.lock.unlock()
+
+    def _accept_connections(self) -> None:
+        while self.server.hasPendingConnections():
+            connection = self.server.nextPendingConnection()
+            if connection is None:
+                continue
+            connection.readyRead.connect(
+                lambda socket=connection: self._handle_message(socket)
+            )
+            if connection.bytesAvailable():
+                self._handle_message(connection)
+
+    def _handle_message(self, connection: QLocalSocket) -> None:
+        message = bytes(connection.readAll())
+        if b"activate" in message:
+            self.activation_requested.emit()
+        connection.disconnectFromServer()
+        connection.deleteLater()
 
 
 def resource_root() -> Path:
@@ -145,7 +283,11 @@ class DesktopPet(QWidget):
             else "random"
         )
         self._default_action = saved_default if saved_default in DEFAULT_ACTION_NAMES else "random"
-        self._always_on_top = True
+        self._always_on_top = (
+            bool(self._settings.value("window/alwaysOnTop", True, type=bool))
+            if self._settings is not None
+            else True
+        )
         self._scale = 1.0
         self._drag_offset: QPoint | None = None
         self._press_global: QPoint | None = None
@@ -167,9 +309,19 @@ class DesktopPet(QWidget):
         self.setAccessibleName(APP_NAME)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        if sys.platform == "darwin":
+            # A Qt Tool window otherwise disappears when another macOS app is active.
+            self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
         self.setMouseTracking(True)
         self._apply_window_flags()
         self.resize(CELL_WIDTH, CELL_HEIGHT)
+        app = QApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._handle_application_state_change)
+
+        self._window_level_timer = QTimer(self)
+        self._window_level_timer.setSingleShot(True)
+        self._window_level_timer.timeout.connect(self._refresh_native_window_level)
 
         self._frame_timer = QTimer(self)
         self._frame_timer.timeout.connect(self._advance_frame)
@@ -245,6 +397,10 @@ class DesktopPet(QWidget):
         return self._default_action
 
     @property
+    def always_on_top(self) -> bool:
+        return self._always_on_top
+
+    @property
     def last_jump_height(self) -> int:
         return self._last_jump_height
 
@@ -264,6 +420,29 @@ class DesktopPet(QWidget):
         if self._always_on_top:
             flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
+
+    def _handle_application_state_change(self, state: Qt.ApplicationState) -> None:
+        del state
+        if self._always_on_top:
+            self._window_level_timer.start(0)
+
+    def _refresh_native_window_level(self) -> None:
+        if self._always_on_top:
+            self._reassert_window_level()
+        elif self.isVisible():
+            set_macos_native_window_level(self, 0)
+
+    def _reassert_window_level(self) -> None:
+        """Keep the native macOS tool window floating without stealing focus."""
+        if not self._always_on_top or not self.isVisible():
+            return
+        if not self.windowFlags() & Qt.WindowType.WindowStaysOnTopHint:
+            position = self.pos()
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+            self.winId()
+            self.show()
+            self.move(position)
+        self.raise_()
 
     def play_state(self, name: str, *, restart: bool = True) -> None:
         if name not in ANIMATIONS:
@@ -764,14 +943,33 @@ class DesktopPet(QWidget):
             return
         self._apply_default_pose()
 
-    def set_always_on_top(self, enabled: bool) -> None:
+    def set_always_on_top(self, enabled: bool, *, persist: bool = True) -> None:
+        enabled = bool(enabled)
         position = self.pos()
         was_visible = self.isVisible()
-        self._always_on_top = bool(enabled)
-        self._apply_window_flags()
+        self._always_on_top = enabled
+        self._window_level_timer.stop()
+        if persist and self._settings is not None:
+            self._settings.setValue("window/alwaysOnTop", enabled)
+            self._settings.sync()
+
+        # Changing a top-level flag recreates the native NSWindow. Force that
+        # recreation now, then restore geometry and visibility deterministically.
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, enabled)
+        self.winId()
         self.move(position)
         if was_visible:
             self.show()
+            self.move(position)
+            if enabled:
+                self.raise_()
+                self._reassert_window_level()
+                self._window_level_timer.start(120)
+            else:
+                # Qt.Tool maps to NSFloatingWindowLevel even after the top hint
+                # is removed. Explicitly return it to NSNormalWindowLevel.
+                set_macos_native_window_level(self, 0)
+                self._window_level_timer.start(120)
 
     def set_display_scale(self, scale: float) -> None:
         if scale not in (0.75, 1.0, 1.25, 1.5):
@@ -913,7 +1111,7 @@ class MenuBarController:
         self.visibility_action.setText("隐藏桌宠" if self.pet.isVisible() else "显示桌宠")
         self.pause_action.setText("继续动画" if self.pet.paused else "暂停动画")
         self.auto_action.setChecked(self.pet.auto_actions_enabled)
-        self.top_action.setChecked(self.pet._always_on_top)
+        self.top_action.setChecked(self.pet.always_on_top)
         for name, action in self.default_action_actions.items():
             action.setChecked(self.pet.default_action == name)
         for scale, action in self.size_actions.items():
@@ -976,10 +1174,16 @@ def main() -> int:
     app.setApplicationDisplayName(APP_NAME)
     app.setApplicationVersion(APP_VERSION)
     app.setQuitOnLastWindowClosed(False)
+    instance_guard = SingleInstanceGuard()
+    if not instance_guard.acquire():
+        return 0
     pet = DesktopPet(DEFAULT_ATLAS)
     app.setWindowIcon(pet.status_icon())
     pet.show()
     menu_bar = MenuBarController(app, pet)
+    instance_guard.activation_requested.connect(menu_bar._ensure_visible)
+    app.aboutToQuit.connect(instance_guard.close)
+    app._single_instance_guard = instance_guard  # type: ignore[attr-defined]
     app._menu_bar_controller = menu_bar  # type: ignore[attr-defined]
     if self_test_output is not None:
         _schedule_self_test(app, pet, menu_bar, self_test_output)
@@ -1009,6 +1213,7 @@ def _schedule_self_test(
     checks = results["checks"]
     assert isinstance(checks, dict)
     saved_default_action = pet.default_action
+    saved_always_on_top = pet.always_on_top
     pet.set_default_action("random", persist=False)
     initial_frame = pet.frame_index
 
@@ -1081,6 +1286,13 @@ def _schedule_self_test(
         test_controls()
 
     def test_controls() -> None:
+        pet.hide()
+        duplicate_guard = SingleInstanceGuard()
+        checks["duplicate_instance_blocked"] = not duplicate_guard.acquire()
+        QTest.qWait(100)
+        checks["duplicate_instance_activates_existing"] = pet.isVisible()
+        duplicate_guard.close()
+
         pet.set_default_action("resting", preview=False, persist=False)
         mapped_cells: list[list[int]] = []
         for index in range(16):
@@ -1172,10 +1384,46 @@ def _schedule_self_test(
         checks["paused"] = pet.paused
         pet.toggle_pause()
         checks["resumed"] = not pet.paused
+        top_position = pet.pos()
+        pet.set_always_on_top(False, persist=False)
+        app.processEvents()
+        native_level_disabled = macos_native_window_level(pet)
+        checks["always_on_top_disabled"] = (
+            not pet.always_on_top
+            and not bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        )
+        checks["top_toggle_keeps_visible"] = pet.isVisible()
+        checks["top_toggle_keeps_position"] = pet.pos() == top_position
+        pet.set_always_on_top(True, persist=False)
+        app.processEvents()
+        native_level_enabled = macos_native_window_level(pet)
+        checks["always_on_top_reenabled"] = (
+            pet.always_on_top
+            and bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        )
+        checks["native_window_level_disabled"] = native_level_disabled
+        checks["native_window_level_enabled"] = native_level_enabled
+        checks["native_window_level_toggles"] = (
+            sys.platform != "darwin"
+            or (
+                native_level_disabled is not None
+                and native_level_enabled is not None
+                and native_level_disabled == 0
+                and native_level_enabled > native_level_disabled
+            )
+        )
+        checks["native_window_recreated"] = int(pet.winId()) != 0 and pet.windowHandle() is not None
+        checks["mac_tool_window_stays_visible_when_inactive"] = (
+            sys.platform != "darwin"
+            or pet.testAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
+        )
+        menu_bar._sync_state()
+        checks["menu_bar_top_state_synced"] = menu_bar.top_action.isChecked()
         checks["transparent_background"] = pet.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         checks["frameless"] = bool(pet.windowFlags() & Qt.WindowType.FramelessWindowHint)
         checks["always_on_top"] = bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         checks["tool_window"] = bool(pet.windowFlags() & Qt.WindowType.Tool)
+        pet.set_always_on_top(saved_always_on_top, persist=False)
         required_true = (
             "animation_progressed",
             "single_click_state",
@@ -1186,6 +1434,8 @@ def _schedule_self_test(
             "jump_is_visibly_high",
             "drag_animation_progressed",
             "drag_state_returned_idle",
+            "duplicate_instance_blocked",
+            "duplicate_instance_activates_existing",
             "rest_lies_down",
             "rest_breathes_while_sleeping",
             "rest_returns_idle",
@@ -1201,6 +1451,14 @@ def _schedule_self_test(
             "interaction_returns_to_static_default",
             "paused",
             "resumed",
+            "always_on_top_disabled",
+            "top_toggle_keeps_visible",
+            "top_toggle_keeps_position",
+            "always_on_top_reenabled",
+            "native_window_level_toggles",
+            "native_window_recreated",
+            "mac_tool_window_stays_visible_when_inactive",
+            "menu_bar_top_state_synced",
             "transparent_background",
             "frameless",
             "always_on_top",

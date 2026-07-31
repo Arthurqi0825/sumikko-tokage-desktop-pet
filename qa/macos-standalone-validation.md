@@ -14,7 +14,11 @@
 - 静态默认姿态、持久化及右键/菜单栏同步：通过
 - 左右拖动连续跑动动画：通过
 - macOS 菜单栏图标与控制菜单：通过
-- 透明、无边框、始终置顶、Tool Window：通过
+- 始终置顶原生窗口层级切换：通过（关闭为 NSWindow level 0，开启为 level 8）
+- 置顶切换保持窗口可见、位置不变，失焦后仍显示：通过
+- 置顶设置持久化及右键/菜单栏同步：通过
+- 单实例限制及重复启动唤醒已有桌宠：通过
+- 透明、无边框、Tool Window：通过
 - 公开互联网分发的 Gatekeeper/Notarization：未完成（当前为 adhoc 签名）
 
 ## 验证环境
@@ -27,7 +31,7 @@
 
 ## 自动化验证
 
-`python -m unittest discover -s tests -v`：13/13 通过。
+`python -m unittest discover -s tests -v`：16/16 通过。
 
 覆盖：
 
@@ -45,21 +49,26 @@
 - 静态 idle 使用固定代表帧并停止帧计时器，互动完成后恢复所选姿态
 - 默认姿态使用 QSettings 跨重启保存，并在右键菜单和菜单栏组件同步勾选
 - 暂停/继续、自动动作、置顶、75%–150% 缩放
+- 置顶关闭/开启时原生 NSWindow level 从 0 切换到 8
+- 置顶切换后原生窗口句柄有效、窗口保持可见且坐标不变
+- 置顶选择通过 QSettings 跨重启保存，并与菜单栏勾选同步
+- macOS 应用失焦时 Tool Window 仍保持显示
+- 本机 IPC 单实例锁阻止第二只桌宠，并让重复启动显示已有实例
 - 右键菜单、互动动作和默认动作选择
 - macOS 菜单栏图标及显示/隐藏、躺下休息、互动、暂停、随机动作、置顶、缩放、复位与退出控制
 
-最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。菜单栏组件在 Cocoa 环境中报告 `available: true`、`visible: true`，完整结果见 `macos-self-test.json`。
+最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。自检直接读取 NSWindow level，确认置顶关闭/开启为 `0 → 8`；同时用第二个 IPC guard 验证重复启动被拦截，并成功唤醒已隐藏的已有实例。菜单栏组件报告 `available: true`、`visible: true`，完整结果见 `macos-self-test.json`。
 
 ## 产物验证
 
-- 版本：1.4.0（bundle 5）
+- 版本：1.5.0（bundle 6）
 - `.app`：100 MB
 - DMG：42 MB
 - 主可执行文件：Mach-O 64-bit arm64
 - `LSUIElement=true`：不占用 Dock，由菜单栏组件承担常驻控制
 - `codesign --verify --deep --strict`：通过
 - `hdiutil verify`：VALID
-- DMG SHA-256：`c22e8624a8f22fc9fd40121b9ec8b71882d96eb763bb8890539bb573b45a3348`
+- DMG SHA-256：`34c062bec1d113908e6e04aee8d403417ec6352454800557bbb93385f8413a7c`
 - DMG 挂载内容：`Tokage Desktop Pet.app` 与 `Applications` 快捷方式
 
 ## 签名说明
