@@ -33,19 +33,33 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
 )
-from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QSlider,
+    QSystemTrayIcon,
+    QWidget,
+    QWidgetAction,
+)
 
 
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.5.2"
+APP_VERSION = "1.6.0"
 SINGLE_INSTANCE_KEY = "com.local.tokage-desktop-pet.single-instance"
 MACOS_NORMAL_WINDOW_LEVEL = 0
 MACOS_FLOATING_WINDOW_LEVEL = 3
 JUMP_HEIGHT = 96
 REACTION_HEIGHT = 22
 REST_HOLD_MS = 4200
+DISPLAY_SCALE_MIN = 0.10
+DISPLAY_SCALE_MAX = 2.00
+ANIMATION_SPEED_MIN = 0.50
+ANIMATION_SPEED_MAX = 2.00
 DEFAULT_ACTION_OPTIONS = (
     ("random", "随机动作"),
     ("idle", "静态站立"),
@@ -325,17 +339,61 @@ class AnimationSpec:
 
 
 ANIMATIONS: dict[str, AnimationSpec] = {
-    "idle": AnimationSpec(0, 6, 180),
-    "running-right": AnimationSpec(1, 8, 105),
-    "running-left": AnimationSpec(2, 8, 105),
-    "waving": AnimationSpec(3, 4, 150, False),
-    "jumping": AnimationSpec(4, 5, 170, False),
-    "failed": AnimationSpec(5, 8, 165, False),
-    "resting": AnimationSpec(5, 8, 240, False),
-    "waiting": AnimationSpec(6, 6, 175, False),
-    "running": AnimationSpec(7, 6, 135, False),
-    "review": AnimationSpec(8, 6, 155, False),
+    "idle": AnimationSpec(0, 6, 240),
+    "running-right": AnimationSpec(1, 8, 150),
+    "running-left": AnimationSpec(2, 8, 150),
+    "waving": AnimationSpec(3, 4, 220, False),
+    "jumping": AnimationSpec(4, 5, 220, False),
+    "failed": AnimationSpec(5, 8, 230, False),
+    "resting": AnimationSpec(5, 8, 300, False),
+    "waiting": AnimationSpec(6, 6, 240, False),
+    "running": AnimationSpec(7, 6, 190, False),
+    "review": AnimationSpec(8, 6, 220, False),
 }
+
+
+def _clamped_float(value: object, default: float, minimum: float, maximum: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = default
+    return max(minimum, min(maximum, number))
+
+
+def _add_percent_slider(
+    menu: QMenu,
+    title: str,
+    minimum: int,
+    maximum: int,
+    value: int,
+    callback,
+) -> tuple[QWidgetAction, QSlider, QLabel]:
+    """Add a keyboard-accessible percentage slider to a Qt menu."""
+    container = QWidget(menu)
+    layout = QHBoxLayout(container)
+    layout.setContentsMargins(10, 5, 10, 5)
+    layout.setSpacing(8)
+    label = QLabel(f"{title} {value}%", container)
+    label.setMinimumWidth(92)
+    slider = QSlider(Qt.Orientation.Horizontal, container)
+    slider.setAccessibleName(title)
+    slider.setRange(minimum, maximum)
+    slider.setSingleStep(5)
+    slider.setPageStep(10)
+    slider.setMinimumWidth(150)
+    slider.setValue(value)
+
+    def handle_value_changed(new_value: int) -> None:
+        label.setText(f"{title} {new_value}%")
+        callback(new_value)
+
+    slider.valueChanged.connect(handle_value_changed)
+    layout.addWidget(label)
+    layout.addWidget(slider)
+    action = QWidgetAction(menu)
+    action.setDefaultWidget(container)
+    menu.addAction(action)
+    return action, slider, label
 
 
 @dataclass
@@ -400,8 +458,23 @@ class DesktopPet(QWidget):
             if self._settings is not None
             else False
         )
+        self._scale = _clamped_float(
+            self._settings.value("window/displayScale", 1.0)
+            if self._settings is not None
+            else 1.0,
+            1.0,
+            DISPLAY_SCALE_MIN,
+            DISPLAY_SCALE_MAX,
+        )
+        self._animation_speed = _clamped_float(
+            self._settings.value("behavior/animationSpeed", 1.0)
+            if self._settings is not None
+            else 1.0,
+            1.0,
+            ANIMATION_SPEED_MIN,
+            ANIMATION_SPEED_MAX,
+        )
         self._mouse_passthrough = False
-        self._scale = 1.0
         self._drag_offset: QPoint | None = None
         self._press_global: QPoint | None = None
         self._dragged = False
@@ -427,7 +500,10 @@ class DesktopPet(QWidget):
             self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
         self.setMouseTracking(True)
         self._apply_window_flags()
-        self.resize(CELL_WIDTH, CELL_HEIGHT)
+        self.resize(
+            round(CELL_WIDTH * self._scale),
+            round(CELL_HEIGHT * self._scale),
+        )
         app = QApplication.instance()
         if app is not None:
             app.applicationStateChanged.connect(self._handle_application_state_change)
@@ -443,7 +519,7 @@ class DesktopPet(QWidget):
 
         self._frame_timer = QTimer(self)
         self._frame_timer.timeout.connect(self._advance_frame)
-        self._frame_timer.start(ANIMATIONS["idle"].interval_ms)
+        self._frame_timer.start(self._animation_interval("idle"))
 
         self._single_click_timer = QTimer(self)
         self._single_click_timer.setSingleShot(True)
@@ -473,16 +549,14 @@ class DesktopPet(QWidget):
         self._jump_animation = QVariantAnimation(self)
         self._jump_animation.setStartValue(0.0)
         self._jump_animation.setEndValue(1.0)
-        self._jump_animation.setDuration(
-            ANIMATIONS["jumping"].frames * ANIMATIONS["jumping"].interval_ms
-        )
+        self._jump_animation.setDuration(self._jump_duration())
         self._jump_animation.valueChanged.connect(self._update_jump_position)
         self._jump_animation.finished.connect(self._finish_jump_motion)
 
         self._reaction_animation = QVariantAnimation(self)
         self._reaction_animation.setStartValue(0.0)
         self._reaction_animation.setEndValue(1.0)
-        self._reaction_animation.setDuration(420)
+        self._reaction_animation.setDuration(self._motion_duration(560))
         self._reaction_animation.valueChanged.connect(self._update_reaction_position)
         self._reaction_animation.finished.connect(self._finish_reaction_motion)
 
@@ -511,6 +585,10 @@ class DesktopPet(QWidget):
         return self._scale
 
     @property
+    def animation_speed(self) -> float:
+        return self._animation_speed
+
+    @property
     def default_action(self) -> str:
         return self._default_action
 
@@ -533,6 +611,15 @@ class DesktopPet(QWidget):
     @property
     def rest_phase(self) -> str | None:
         return self._rest_phase
+
+    def _motion_duration(self, base_duration_ms: int) -> int:
+        return max(40, round(base_duration_ms / self._animation_speed))
+
+    def _animation_interval(self, name: str) -> int:
+        return self._motion_duration(ANIMATIONS[name].interval_ms)
+
+    def _jump_duration(self) -> int:
+        return ANIMATIONS["jumping"].frames * self._animation_interval("jumping")
 
     def status_icon(self) -> QIcon:
         return QIcon(self._atlas.copy(0, 0, CELL_WIDTH, CELL_HEIGHT))
@@ -610,7 +697,7 @@ class DesktopPet(QWidget):
         )
         if same_running_state:
             if not self._frame_timer.isActive():
-                self._frame_timer.start(ANIMATIONS[name].interval_ms)
+                self._frame_timer.start(self._animation_interval(name))
             return
         if name == "jumping":
             self._cancel_reaction_motion()
@@ -627,7 +714,7 @@ class DesktopPet(QWidget):
         self._state_name = name
         if restart:
             self._frame_index = 0
-        self._frame_timer.setInterval(ANIMATIONS[name].interval_ms)
+        self._frame_timer.setInterval(self._animation_interval(name))
         if not self._paused:
             self._frame_timer.start()
         self.update()
@@ -636,6 +723,7 @@ class DesktopPet(QWidget):
         self._cancel_jump_motion()
         self._jump_base_position = self.pos()
         self._last_jump_height = 0
+        self._jump_animation.setDuration(self._jump_duration())
         self._jump_animation.start()
 
     def _update_jump_position(self, value: object) -> None:
@@ -661,6 +749,7 @@ class DesktopPet(QWidget):
         self._cancel_reaction_motion()
         self._reaction_base_position = self.pos()
         self._last_reaction_height = 0
+        self._reaction_animation.setDuration(self._motion_duration(560))
         self._reaction_animation.start()
 
     def _update_reaction_position(self, value: object) -> None:
@@ -735,7 +824,7 @@ class DesktopPet(QWidget):
         self._rest_hold_timer.stop()
         self._rest_phase = "waking"
         self._frame_index = 5
-        self._frame_timer.setInterval(180)
+        self._frame_timer.setInterval(self._motion_duration(240))
         if not self._paused:
             self._frame_timer.start()
         self.update()
@@ -1026,9 +1115,41 @@ class DesktopPet(QWidget):
         top_action.setChecked(self._always_on_top)
         top_action.triggered.connect(self.set_always_on_top)
 
+        speed_menu = QMenu("动画速度", menu)
+        menu.addMenu(speed_menu)
+        speed_action, speed_slider, speed_label = _add_percent_slider(
+            speed_menu,
+            "速度",
+            round(ANIMATION_SPEED_MIN * 100),
+            round(ANIMATION_SPEED_MAX * 100),
+            round(self._animation_speed * 100),
+            lambda value: self.set_animation_speed(value / 100.0),
+        )
+        speed_menu.addSeparator()
+        for label, speed in (("慢速 50%", 0.5), ("舒适 100%", 1.0), ("快速 150%", 1.5)):
+            action = speed_menu.addAction(label)
+            action.triggered.connect(
+                lambda checked=False, value=speed: self.set_animation_speed(value)
+            )
+
         size_menu = QMenu("显示大小", menu)
         menu.addMenu(size_menu)
-        for label, scale in (("75%", 0.75), ("100%", 1.0), ("125%", 1.25), ("150%", 1.5)):
+        size_slider_action, size_slider, size_label = _add_percent_slider(
+            size_menu,
+            "大小",
+            round(DISPLAY_SCALE_MIN * 100),
+            round(DISPLAY_SCALE_MAX * 100),
+            round(self._scale * 100),
+            lambda value: self.set_display_scale(value / 100.0),
+        )
+        size_menu.addSeparator()
+        for label, scale in (
+            ("最小 10%", 0.10),
+            ("50%", 0.50),
+            ("100%", 1.0),
+            ("150%", 1.5),
+            ("最大 200%", 2.0),
+        ):
             size_action = size_menu.addAction(label)
             size_action.setCheckable(True)
             size_action.setChecked(math.isclose(self._scale, scale))
@@ -1039,8 +1160,14 @@ class DesktopPet(QWidget):
         menu.addAction("关于 Tokage Desktop Pet", self.show_about)
         menu.addAction("退出", QApplication.quit)
         # Keep Python wrappers alive for the lifetime of the parent QMenu.
-        menu._owned_submenus = [actions_menu, default_menu, size_menu]  # type: ignore[attr-defined]
+        menu._owned_submenus = [actions_menu, default_menu, speed_menu, size_menu]  # type: ignore[attr-defined]
         menu._default_group = default_group  # type: ignore[attr-defined]
+        menu._speed_slider_action = speed_action  # type: ignore[attr-defined]
+        menu._speed_slider = speed_slider  # type: ignore[attr-defined]
+        menu._speed_label = speed_label  # type: ignore[attr-defined]
+        menu._size_slider_action = size_slider_action  # type: ignore[attr-defined]
+        menu._size_slider = size_slider  # type: ignore[attr-defined]
+        menu._size_label = size_label  # type: ignore[attr-defined]
         return menu
 
     def _look_around(self) -> None:
@@ -1053,7 +1180,7 @@ class DesktopPet(QWidget):
                 self._return_to_idle()
                 return
             self.show_look_direction(index * 22.5)
-            QTimer.singleShot(90, advance)
+            QTimer.singleShot(self._motion_duration(140), advance)
 
         advance()
 
@@ -1124,14 +1251,39 @@ class DesktopPet(QWidget):
                 set_macos_native_window_level(self, MACOS_NORMAL_WINDOW_LEVEL)
                 self._window_level_timer.start(120)
 
-    def set_display_scale(self, scale: float) -> None:
-        if scale not in (0.75, 1.0, 1.25, 1.5):
-            raise ValueError(f"Unsupported display scale: {scale}")
+    def set_animation_speed(self, speed: float, *, persist: bool = True) -> None:
+        speed = _clamped_float(
+            speed,
+            self._animation_speed,
+            ANIMATION_SPEED_MIN,
+            ANIMATION_SPEED_MAX,
+        )
+        self._animation_speed = round(speed, 2)
+        if persist and self._settings is not None:
+            self._settings.setValue("behavior/animationSpeed", self._animation_speed)
+            self._settings.sync()
+        if self._fixed_cell is None and self._state_name in ANIMATIONS:
+            self._frame_timer.setInterval(self._animation_interval(self._state_name))
+        if self._jump_animation.state() != QAbstractAnimation.State.Running:
+            self._jump_animation.setDuration(self._jump_duration())
+        if self._reaction_animation.state() != QAbstractAnimation.State.Running:
+            self._reaction_animation.setDuration(self._motion_duration(560))
+
+    def set_display_scale(self, scale: float, *, persist: bool = True) -> None:
+        scale = _clamped_float(
+            scale,
+            self._scale,
+            DISPLAY_SCALE_MIN,
+            DISPLAY_SCALE_MAX,
+        )
         self._cancel_jump_motion()
         self._cancel_reaction_motion()
         center = self.frameGeometry().center()
-        self._scale = scale
-        self.resize(round(CELL_WIDTH * scale), round(CELL_HEIGHT * scale))
+        self._scale = round(scale, 2)
+        if persist and self._settings is not None:
+            self._settings.setValue("window/displayScale", self._scale)
+            self._settings.sync()
+        self.resize(round(CELL_WIDTH * self._scale), round(CELL_HEIGHT * self._scale))
         self.move(center - self.rect().center())
         self.clamp_to_current_screen()
         self.update()
@@ -1233,10 +1385,42 @@ class MenuBarController:
         self.top_action.setCheckable(True)
         self.top_action.triggered.connect(self.pet.set_always_on_top)
 
+        speeds = QMenu("动画速度", self.menu)
+        self.menu.addMenu(speeds)
+        self.speed_slider_action, self.speed_slider, self.speed_label = _add_percent_slider(
+            speeds,
+            "速度",
+            round(ANIMATION_SPEED_MIN * 100),
+            round(ANIMATION_SPEED_MAX * 100),
+            round(self.pet.animation_speed * 100),
+            lambda value: self.pet.set_animation_speed(value / 100.0),
+        )
+        speeds.addSeparator()
+        for label, speed in (("慢速 50%", 0.5), ("舒适 100%", 1.0), ("快速 150%", 1.5)):
+            action = speeds.addAction(label)
+            action.triggered.connect(
+                lambda checked=False, value=speed: self.pet.set_animation_speed(value)
+            )
+
         sizes = QMenu("显示大小", self.menu)
         self.menu.addMenu(sizes)
+        self.size_slider_action, self.size_slider, self.size_label = _add_percent_slider(
+            sizes,
+            "大小",
+            round(DISPLAY_SCALE_MIN * 100),
+            round(DISPLAY_SCALE_MAX * 100),
+            round(self.pet.display_scale * 100),
+            lambda value: self.pet.set_display_scale(value / 100.0),
+        )
+        sizes.addSeparator()
         self.size_actions: dict[float, QAction] = {}
-        for label, scale in (("75%", 0.75), ("100%", 1.0), ("125%", 1.25), ("150%", 1.5)):
+        for label, scale in (
+            ("最小 10%", 0.10),
+            ("50%", 0.50),
+            ("100%", 1.0),
+            ("150%", 1.5),
+            ("最大 200%", 2.0),
+        ):
             action = sizes.addAction(label)
             action.setCheckable(True)
             action.triggered.connect(lambda checked=False, value=scale: self.pet.set_display_scale(value))
@@ -1246,7 +1430,7 @@ class MenuBarController:
         self.menu.addSeparator()
         self.menu.addAction("关于 Tokage Desktop Pet", self.pet.show_about)
         self.menu.addAction("退出", self.app.quit)
-        self.menu._owned_submenus = [interactions, defaults, sizes]  # type: ignore[attr-defined]
+        self.menu._owned_submenus = [interactions, defaults, speeds, sizes]  # type: ignore[attr-defined]
         self._sync_state()
 
     def menu_labels(self) -> list[str]:
@@ -1267,6 +1451,14 @@ class MenuBarController:
         self.top_action.setChecked(self.pet.always_on_top)
         for name, action in self.default_action_actions.items():
             action.setChecked(self.pet.default_action == name)
+        self.speed_slider.blockSignals(True)
+        self.speed_slider.setValue(round(self.pet.animation_speed * 100))
+        self.speed_slider.blockSignals(False)
+        self.speed_label.setText(f"速度 {round(self.pet.animation_speed * 100)}%")
+        self.size_slider.blockSignals(True)
+        self.size_slider.setValue(round(self.pet.display_scale * 100))
+        self.size_slider.blockSignals(False)
+        self.size_label.setText(f"大小 {round(self.pet.display_scale * 100)}%")
         for scale, action in self.size_actions.items():
             action.setChecked(math.isclose(self.pet.display_scale, scale))
 
@@ -1367,6 +1559,10 @@ def _schedule_self_test(
     assert isinstance(checks, dict)
     saved_default_action = pet.default_action
     saved_always_on_top = pet.always_on_top
+    saved_display_scale = pet.display_scale
+    saved_animation_speed = pet.animation_speed
+    pet.set_display_scale(1.0, persist=False)
+    pet.set_animation_speed(1.0, persist=False)
     pet.set_default_action("random", persist=False)
     initial_frame = pet.frame_index
 
@@ -1467,7 +1663,15 @@ def _schedule_self_test(
         checks["context_default_action_labels"] = default_labels
         checks["context_menu_complete"] = all(
             label in labels
-            for label in ("互动动作", "默认动作", "启用自动动作", "始终置顶", "显示大小", "退出")
+            for label in (
+                "互动动作",
+                "默认动作",
+                "启用自动动作",
+                "始终置顶",
+                "动画速度",
+                "显示大小",
+                "退出",
+            )
         ) and all(
             label in interaction_labels
             for label in ("挥手", "跳一跳", "躺下休息", "等待", "有点难过")
@@ -1476,6 +1680,14 @@ def _schedule_self_test(
             action.text() == "静态躺下" and action.isChecked()
             for action in default_submenu.actions()
         )
+        checks["context_speed_slider_range"] = [
+            menu._speed_slider.minimum(),  # type: ignore[attr-defined]
+            menu._speed_slider.maximum(),  # type: ignore[attr-defined]
+        ]
+        checks["context_size_slider_range"] = [
+            menu._size_slider.minimum(),  # type: ignore[attr-defined]
+            menu._size_slider.maximum(),  # type: ignore[attr-defined]
+        ]
         checks["menu_bar_available"] = menu_bar.available
         checks["menu_bar_visible"] = menu_bar.tray.isVisible()
         checks["menu_bar_labels"] = menu_bar.menu_labels()
@@ -1503,6 +1715,7 @@ def _schedule_self_test(
                 "暂停动画",
                 "启用自动动作",
                 "始终置顶",
+                "动画速度",
                 "显示大小",
                 "回到右下角",
                 "退出",
@@ -1524,14 +1737,27 @@ def _schedule_self_test(
         checks["static_default_pose_timers_stopped"] = static_pose_timers_stopped
         pet.set_default_action("jumping", persist=False)
         pet.play_state("waving")
-        QTest.qWait(750)
+        QTest.qWait(950)
         checks["interaction_returns_to_static_default"] = (
             pet.state_name == "default-jumping"
             and pet._current_cell() == DEFAULT_POSE_CELLS["jumping"]
         )
         pet.set_default_action(saved_default_action, preview=False, persist=False)
         pet._apply_default_pose()
-        pet.set_display_scale(1.25)
+        pet.set_animation_speed(0.5, persist=False)
+        checks["slow_animation_interval"] = pet._animation_interval("idle")
+        checks["animation_speed_slider_range"] = [
+            menu_bar.speed_slider.minimum(),
+            menu_bar.speed_slider.maximum(),
+        ]
+        pet.set_animation_speed(1.0, persist=False)
+        pet.set_display_scale(0.10, persist=False)
+        checks["minimum_scaled_size"] = [pet.width(), pet.height()]
+        checks["size_slider_range"] = [
+            menu_bar.size_slider.minimum(),
+            menu_bar.size_slider.maximum(),
+        ]
+        pet.set_display_scale(1.25, persist=False)
         checks["scaled_size"] = [pet.width(), pet.height()]
         pet.toggle_pause()
         checks["paused"] = pet.paused
@@ -1605,6 +1831,8 @@ def _schedule_self_test(
         checks["always_on_top"] = bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         checks["tool_window"] = bool(pet.windowFlags() & Qt.WindowType.Tool)
         pet.set_always_on_top(saved_always_on_top, persist=False)
+        pet.set_animation_speed(saved_animation_speed, persist=False)
+        pet.set_display_scale(saved_display_scale, persist=False)
         required_true = (
             "animation_progressed",
             "single_click_state",
@@ -1651,6 +1879,12 @@ def _schedule_self_test(
         checks["all_passed"] = (
             all(checks[key] is True for key in required_true)
             and checks["drag_delta"] == [-36, -24]
+            and checks["context_speed_slider_range"] == [50, 200]
+            and checks["context_size_slider_range"] == [10, 200]
+            and checks["animation_speed_slider_range"] == [50, 200]
+            and checks["size_slider_range"] == [10, 200]
+            and checks["slow_animation_interval"] == ANIMATIONS["idle"].interval_ms * 2
+            and checks["minimum_scaled_size"] == [19, 21]
             and checks["scaled_size"] == [240, 260]
         )
 

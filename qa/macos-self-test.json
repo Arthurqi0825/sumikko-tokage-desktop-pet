@@ -1,6 +1,6 @@
 {
   "app": "Tokage Desktop Pet",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "atlas": {
     "path": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/dist/macos/Tokage Desktop Pet.app/Contents/Frameworks/assets/codex/tokage/spritesheet.webp",
     "width": 1536,
@@ -18,7 +18,7 @@
     "double_click_particles": true,
     "double_click_feedback_particles": 28,
     "double_click_feedback_rings": 3,
-    "jump_peak_height": 96,
+    "jump_peak_height": 92,
     "jump_is_visibly_high": true,
     "drag_animation_progressed": true,
     "drag_delta": [
@@ -145,6 +145,7 @@
       "暂停动画",
       "启用自动动作",
       "始终置顶",
+      "动画速度",
       "显示大小",
       "回到右下角",
       "",
@@ -172,6 +173,14 @@
     ],
     "context_menu_complete": true,
     "context_default_action_selected": true,
+    "context_speed_slider_range": [
+      50,
+      200
+    ],
+    "context_size_slider_range": [
+      10,
+      200
+    ],
     "menu_bar_available": true,
     "menu_bar_visible": true,
     "menu_bar_labels": [
@@ -181,6 +190,7 @@
       "暂停动画",
       "启用自动动作",
       "始终置顶",
+      "动画速度",
       "显示大小",
       "回到右下角",
       "关于 Tokage Desktop Pet",
@@ -234,6 +244,19 @@
     "static_default_poses_complete": true,
     "static_default_pose_timers_stopped": true,
     "interaction_returns_to_static_default": true,
+    "slow_animation_interval": 480,
+    "animation_speed_slider_range": [
+      50,
+      200
+    ],
+    "minimum_scaled_size": [
+      19,
+      21
+    ],
+    "size_slider_range": [
+      10,
+      200
+    ],
     "scaled_size": [
       240,
       260

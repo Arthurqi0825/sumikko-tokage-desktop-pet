@@ -51,10 +51,10 @@ class DesktopPetTests(unittest.TestCase):
 
     def test_animation_progresses_and_one_shot_returns_idle(self) -> None:
         start = self.pet.frame_index
-        QTest.qWait(220)
+        QTest.qWait(300)
         self.assertNotEqual(self.pet.frame_index, start)
         self.pet.play_state("waving")
-        QTest.qWait(750)
+        QTest.qWait(950)
         self.assertEqual(self.pet.state_name, "idle")
 
     def test_repeated_drag_events_do_not_freeze_running_animation(self) -> None:
@@ -65,7 +65,7 @@ class DesktopPetTests(unittest.TestCase):
             QTest.qWait(25)
         self.assertNotEqual(self.pet.frame_index, start)
         self.pet.play_state("running-left")
-        QTest.qWait(130)
+        QTest.qWait(180)
         self.assertGreater(self.pet.frame_index, 0)
 
     def test_single_and_double_click_actions_and_effects(self) -> None:
@@ -81,10 +81,10 @@ class DesktopPetTests(unittest.TestCase):
     def test_single_click_has_visible_reaction_bounce(self) -> None:
         origin = self.pet.pos()
         self.pet._handle_single_click()
-        QTest.qWait(220)
+        QTest.qWait(280)
         self.assertGreaterEqual(self.pet.last_reaction_height, 18)
         self.assertLessEqual(self.pet.y(), origin.y() - 18)
-        QTest.qWait(260)
+        QTest.qWait(340)
         self.assertEqual(self.pet.pos(), origin)
 
     def test_real_double_click_does_not_fall_through_to_single_click(self) -> None:
@@ -96,10 +96,10 @@ class DesktopPetTests(unittest.TestCase):
     def test_jump_has_visible_vertical_lift_and_lands_at_origin(self) -> None:
         origin = self.pet.pos()
         self.pet.play_state("jumping")
-        QTest.qWait(430)
+        QTest.qWait(550)
         self.assertGreaterEqual(self.pet.last_jump_height, 80)
         self.assertLessEqual(self.pet.y(), origin.y() - 80)
-        QTest.qWait(520)
+        QTest.qWait(600)
         self.assertEqual(self.pet.pos(), origin)
         self.assertEqual(self.pet.state_name, "idle")
 
@@ -140,6 +140,35 @@ class DesktopPetTests(unittest.TestCase):
         self.assertEqual(self.pet.display_scale, 1.25)
         self.assertEqual(self.pet.size().width(), 240)
         self.assertEqual(self.pet.size().height(), 260)
+        self.pet.set_display_scale(0.10)
+        self.assertEqual(self.pet.display_scale, 0.10)
+        self.assertEqual(self.pet.size().width(), 19)
+        self.assertEqual(self.pet.size().height(), 21)
+
+    def test_animation_speed_and_display_scale_persist(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "settings.ini"
+            first = DesktopPet(
+                DEFAULT_ATLAS,
+                settings=QSettings(str(settings_path), QSettings.Format.IniFormat),
+            )
+            first.set_animation_speed(0.65)
+            first.set_display_scale(0.37)
+            self.assertEqual(
+                first._animation_interval("idle"),
+                round(ANIMATIONS["idle"].interval_ms / 0.65),
+            )
+            first.close()
+
+            second = DesktopPet(
+                DEFAULT_ATLAS,
+                settings=QSettings(str(settings_path), QSettings.Format.IniFormat),
+            )
+            self.assertEqual(second.animation_speed, 0.65)
+            self.assertEqual(second.display_scale, 0.37)
+            self.assertEqual(second.width(), round(192 * 0.37))
+            self.assertEqual(second.height(), round(208 * 0.37))
+            second.close()
 
     def test_always_on_top_toggle_keeps_native_window_visible_and_positioned(self) -> None:
         position = self.pet.pos()
@@ -220,7 +249,7 @@ class DesktopPetTests(unittest.TestCase):
         self.assertEqual(self.pet.state_name, "default-jumping")
 
         self.pet.play_state("waving")
-        QTest.qWait(750)
+        QTest.qWait(950)
         self.assertEqual(self.pet.state_name, "default-jumping")
         self.assertEqual(self.pet._current_cell(), DEFAULT_POSE_CELLS["jumping"])
 
@@ -242,6 +271,7 @@ class DesktopPetTests(unittest.TestCase):
         self.assertIn("默认动作", labels)
         self.assertIn("启用自动动作", labels)
         self.assertIn("始终置顶", labels)
+        self.assertIn("动画速度", labels)
         self.assertIn("显示大小", labels)
         self.assertIn("退出", labels)
         interactions = menu.actions()[0].menu()
@@ -257,6 +287,14 @@ class DesktopPetTests(unittest.TestCase):
             [action.text() for action in defaults.actions()],
             [label for _, label in DEFAULT_ACTION_OPTIONS],
         )
+        self.assertEqual(menu._speed_slider.minimum(), 50)  # type: ignore[attr-defined]
+        self.assertEqual(menu._speed_slider.maximum(), 200)  # type: ignore[attr-defined]
+        self.assertEqual(menu._size_slider.minimum(), 10)  # type: ignore[attr-defined]
+        self.assertEqual(menu._size_slider.maximum(), 200)  # type: ignore[attr-defined]
+        menu._speed_slider.setValue(75)  # type: ignore[attr-defined]
+        menu._size_slider.setValue(35)  # type: ignore[attr-defined]
+        self.assertEqual(self.pet.animation_speed, 0.75)
+        self.assertEqual(self.pet.display_scale, 0.35)
 
     def test_macos_menu_bar_controller_contains_all_controls(self) -> None:
         controller = MenuBarController(self.app, self.pet, show_icon=False)
@@ -267,6 +305,7 @@ class DesktopPetTests(unittest.TestCase):
         self.assertIn("暂停动画", labels)
         self.assertIn("启用自动动作", labels)
         self.assertIn("始终置顶", labels)
+        self.assertIn("动画速度", labels)
         self.assertIn("显示大小", labels)
         self.assertIn("回到右下角", labels)
         self.assertIn("退出", labels)
@@ -277,6 +316,15 @@ class DesktopPetTests(unittest.TestCase):
         self.pet.set_default_action("resting", preview=False, persist=False)
         controller._sync_state()
         self.assertTrue(controller.default_action_actions["resting"].isChecked())
+        self.assertEqual(controller.speed_slider.minimum(), 50)
+        self.assertEqual(controller.speed_slider.maximum(), 200)
+        self.assertEqual(controller.size_slider.minimum(), 10)
+        self.assertEqual(controller.size_slider.maximum(), 200)
+        self.pet.set_animation_speed(0.8, persist=False)
+        self.pet.set_display_scale(0.4, persist=False)
+        controller._sync_state()
+        self.assertEqual(controller.speed_slider.value(), 80)
+        self.assertEqual(controller.size_slider.value(), 40)
         controller.toggle_pet_visibility()
         self.assertFalse(self.pet.isVisible())
         controller.toggle_pet_visibility()
