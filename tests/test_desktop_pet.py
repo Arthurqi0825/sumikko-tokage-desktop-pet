@@ -1,15 +1,23 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import unittest
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from src.desktop_pet import ANIMATIONS, DEFAULT_ATLAS, DesktopPet, MenuBarController
+from src.desktop_pet import (
+    ANIMATIONS,
+    DEFAULT_ACTION_OPTIONS,
+    DEFAULT_ATLAS,
+    DesktopPet,
+    MenuBarController,
+)
 
 
 class DesktopPetTests(unittest.TestCase):
@@ -18,7 +26,7 @@ class DesktopPetTests(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
-        self.pet = DesktopPet(DEFAULT_ATLAS)
+        self.pet = DesktopPet(DEFAULT_ATLAS, persist_settings=False)
         self.pet.set_auto_actions(False)
         self.pet.show()
         self.app.processEvents()
@@ -45,6 +53,17 @@ class DesktopPetTests(unittest.TestCase):
         self.pet.play_state("waving")
         QTest.qWait(750)
         self.assertEqual(self.pet.state_name, "idle")
+
+    def test_repeated_drag_events_do_not_freeze_running_animation(self) -> None:
+        self.pet.play_state("running-right")
+        start = self.pet.frame_index
+        for _ in range(8):
+            self.pet.play_state("running-right", restart=False)
+            QTest.qWait(25)
+        self.assertNotEqual(self.pet.frame_index, start)
+        self.pet.play_state("running-left")
+        QTest.qWait(130)
+        self.assertGreater(self.pet.frame_index, 0)
 
     def test_single_and_double_click_actions_and_effects(self) -> None:
         self.pet._handle_single_click()
@@ -121,11 +140,31 @@ class DesktopPetTests(unittest.TestCase):
         self.assertEqual(self.pet.size().width(), 240)
         self.assertEqual(self.pet.size().height(), 260)
 
+    def test_default_action_controls_scheduler_and_persists(self) -> None:
+        self.pet.set_default_action("jumping", preview=False, persist=False)
+        self.pet.set_auto_actions(True)
+        self.pet.play_state("idle")
+        self.pet._play_random_action()
+        self.assertEqual(self.pet.state_name, "jumping")
+        self.pet._cancel_jump_motion()
+
+        with tempfile.TemporaryDirectory() as directory:
+            settings = QSettings(str(Path(directory) / "settings.ini"), QSettings.Format.IniFormat)
+            first = DesktopPet(DEFAULT_ATLAS, settings=settings)
+            first.set_auto_actions(False)
+            first.set_default_action("resting", preview=False)
+            first.close()
+            second = DesktopPet(DEFAULT_ATLAS, settings=settings)
+            second.set_auto_actions(False)
+            self.assertEqual(second.default_action, "resting")
+            second.close()
+
     def test_context_menu_contains_interactions_and_exit(self) -> None:
         menu = self.pet._build_context_menu()
         labels = [action.text() for action in menu.actions()]
         self.assertIn("互动动作", labels)
-        self.assertIn("自动随机动作", labels)
+        self.assertIn("默认动作", labels)
+        self.assertIn("启用自动动作", labels)
         self.assertIn("始终置顶", labels)
         self.assertIn("显示大小", labels)
         self.assertIn("退出", labels)
@@ -136,20 +175,32 @@ class DesktopPetTests(unittest.TestCase):
             "挥手", "跳一跳", "躺下休息", "等待", "认真工作", "检查成果",
         ])
         self.assertIn("有点难过", interaction_labels)
+        defaults = next(action.menu() for action in menu.actions() if action.text() == "默认动作")
+        self.assertIsNotNone(defaults)
+        self.assertEqual(
+            [action.text() for action in defaults.actions()],
+            [label for _, label in DEFAULT_ACTION_OPTIONS],
+        )
 
     def test_macos_menu_bar_controller_contains_all_controls(self) -> None:
         controller = MenuBarController(self.app, self.pet, show_icon=False)
         labels = controller.menu_labels()
         self.assertIn("隐藏桌宠", labels)
         self.assertIn("互动动作", labels)
+        self.assertIn("默认动作", labels)
         self.assertIn("暂停动画", labels)
-        self.assertIn("自动随机动作", labels)
+        self.assertIn("启用自动动作", labels)
         self.assertIn("始终置顶", labels)
         self.assertIn("显示大小", labels)
         self.assertIn("回到右下角", labels)
         self.assertIn("退出", labels)
         self.assertIn("明显跳跃", controller.interaction_labels())
         self.assertIn("躺下休息", controller.interaction_labels())
+        self.assertIn("默认跳跃", controller.default_action_labels())
+        self.assertIn("默认躺下", controller.default_action_labels())
+        self.pet.set_default_action("resting", preview=False, persist=False)
+        controller._sync_state()
+        self.assertTrue(controller.default_action_actions["resting"].isChecked())
         controller.toggle_pet_visibility()
         self.assertFalse(self.pet.isVisible())
         controller.toggle_pet_visibility()

@@ -12,21 +12,41 @@ from PySide6.QtCore import (
     QPoint,
     QPointF,
     QRectF,
+    QSettings,
     Qt,
     QTimer,
     QVariantAnimation,
 )
-from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QMouseEvent, QPainter, QPen, QPixmap
+from PySide6.QtGui import (
+    QAction,
+    QActionGroup,
+    QColor,
+    QCursor,
+    QIcon,
+    QMouseEvent,
+    QPainter,
+    QPen,
+    QPixmap,
+)
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QWidget
 
 
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 JUMP_HEIGHT = 96
 REACTION_HEIGHT = 22
 REST_HOLD_MS = 4200
+DEFAULT_ACTION_OPTIONS = (
+    ("random", "随机动作"),
+    ("idle", "保持待机"),
+    ("jumping", "默认跳跃"),
+    ("resting", "默认躺下"),
+    ("waving", "默认挥手"),
+    ("waiting", "默认等待"),
+)
+DEFAULT_ACTION_NAMES = {name for name, _ in DEFAULT_ACTION_OPTIONS}
 
 
 def resource_root() -> Path:
@@ -82,7 +102,13 @@ class InteractionRing:
 class DesktopPet(QWidget):
     """Transparent, atlas-driven macOS desktop pet."""
 
-    def __init__(self, atlas_path: Path = DEFAULT_ATLAS) -> None:
+    def __init__(
+        self,
+        atlas_path: Path = DEFAULT_ATLAS,
+        *,
+        settings: QSettings | None = None,
+        persist_settings: bool = True,
+    ) -> None:
         super().__init__()
         self._atlas_path = Path(atlas_path)
         self._atlas = QPixmap(str(self._atlas_path))
@@ -99,6 +125,19 @@ class DesktopPet(QWidget):
         self._fixed_cell: tuple[int, int] | None = None
         self._paused = False
         self._auto_actions = True
+        self._settings = (
+            settings
+            if settings is not None
+            else QSettings("TokageDesktopPet", "TokageDesktopPet")
+            if persist_settings
+            else None
+        )
+        saved_default = (
+            str(self._settings.value("behavior/defaultAction", "random"))
+            if self._settings is not None
+            else "random"
+        )
+        self._default_action = saved_default if saved_default in DEFAULT_ACTION_NAMES else "random"
         self._always_on_top = True
         self._scale = 1.0
         self._drag_offset: QPoint | None = None
@@ -194,6 +233,10 @@ class DesktopPet(QWidget):
         return self._scale
 
     @property
+    def default_action(self) -> str:
+        return self._default_action
+
+    @property
     def last_jump_height(self) -> int:
         return self._last_jump_height
 
@@ -218,6 +261,16 @@ class DesktopPet(QWidget):
         if name not in ANIMATIONS:
             raise ValueError(f"Unknown animation state: {name}")
         if self._paused and name != "idle":
+            return
+        same_running_state = (
+            not restart
+            and self._fixed_cell is None
+            and self._state_name == name
+            and name in ("running-left", "running-right")
+        )
+        if same_running_state:
+            if not self._frame_timer.isActive():
+                self._frame_timer.start(ANIMATIONS[name].interval_ms)
             return
         if name == "jumping":
             self._cancel_reaction_motion()
@@ -348,13 +401,22 @@ class DesktopPet(QWidget):
         self.update()
 
     def _try_auto_rest(self) -> None:
-        if self._auto_actions and not self._paused and self._state_name == "idle":
+        if (
+            self._auto_actions
+            and self._default_action in ("random", "resting")
+            and not self._paused
+            and self._state_name == "idle"
+        ):
             self.play_state("resting")
         else:
             self._schedule_rest(short_retry=True)
 
     def _schedule_rest(self, *, short_retry: bool = False) -> None:
-        if not self._auto_actions or self._paused:
+        if (
+            not self._auto_actions
+            or self._paused
+            or self._default_action not in ("random", "resting")
+        ):
             self._rest_schedule_timer.stop()
             return
         delay = random.randint(5000, 8000) if short_retry else random.randint(18000, 28000)
@@ -393,15 +455,17 @@ class DesktopPet(QWidget):
 
     def _play_random_action(self) -> None:
         if self._auto_actions and not self._paused and self._state_name == "idle":
-            self.play_state(
-                random.choice(
+            action = self._default_action
+            if action == "random":
+                action = random.choice(
                     ("waving", "jumping", "waiting", "running", "review", "resting", "resting")
                 )
-            )
+            if action != "idle":
+                self.play_state(action)
         self._schedule_auto_action()
 
     def _schedule_auto_action(self) -> None:
-        if self._auto_actions:
+        if self._auto_actions and self._default_action != "idle":
             self._auto_timer.start(random.randint(7000, 13000))
         else:
             self._auto_timer.stop()
@@ -506,7 +570,9 @@ class DesktopPet(QWidget):
                 self._dragged = True
             delta_x = global_position.x() - self._last_drag_x
             if abs(delta_x) >= 1:
-                self.play_state("running-right" if delta_x > 0 else "running-left", restart=False)
+                drag_state = "running-right" if delta_x > 0 else "running-left"
+                if self._state_name != drag_state:
+                    self.play_state(drag_state)
             self._last_drag_x = global_position.x()
             self.move(global_position - self._drag_offset)
             event.accept()
@@ -574,11 +640,24 @@ class DesktopPet(QWidget):
         random_action = actions_menu.addAction("随机动作")
         random_action.triggered.connect(self._play_random_action)
 
+        default_menu = QMenu("默认动作", menu)
+        menu.addMenu(default_menu)
+        default_group = QActionGroup(default_menu)
+        default_group.setExclusive(True)
+        for name, label in DEFAULT_ACTION_OPTIONS:
+            default_action = default_menu.addAction(label)
+            default_action.setCheckable(True)
+            default_action.setChecked(self._default_action == name)
+            default_action.triggered.connect(
+                lambda checked=False, value=name: self.set_default_action(value)
+            )
+            default_group.addAction(default_action)
+
         menu.addSeparator()
         pause_action = menu.addAction("继续动画" if self._paused else "暂停动画")
         pause_action.triggered.connect(self.toggle_pause)
 
-        auto_action = menu.addAction("自动随机动作")
+        auto_action = menu.addAction("启用自动动作")
         auto_action.setCheckable(True)
         auto_action.setChecked(self._auto_actions)
         auto_action.triggered.connect(self.set_auto_actions)
@@ -601,7 +680,8 @@ class DesktopPet(QWidget):
         menu.addAction("关于 Tokage Desktop Pet", self.show_about)
         menu.addAction("退出", QApplication.quit)
         # Keep Python wrappers alive for the lifetime of the parent QMenu.
-        menu._owned_submenus = [actions_menu, size_menu]  # type: ignore[attr-defined]
+        menu._owned_submenus = [actions_menu, default_menu, size_menu]  # type: ignore[attr-defined]
+        menu._default_group = default_group  # type: ignore[attr-defined]
         return menu
 
     def _look_around(self) -> None:
@@ -637,6 +717,28 @@ class DesktopPet(QWidget):
         self._auto_actions = bool(enabled)
         self._schedule_auto_action()
         self._schedule_rest()
+
+    def set_default_action(
+        self,
+        name: str,
+        *,
+        preview: bool = True,
+        persist: bool = True,
+    ) -> None:
+        if name not in DEFAULT_ACTION_NAMES:
+            raise ValueError(f"Unsupported default action: {name}")
+        self._default_action = name
+        if persist and self._settings is not None:
+            self._settings.setValue("behavior/defaultAction", name)
+            self._settings.sync()
+        self._schedule_auto_action()
+        self._schedule_rest()
+        if not preview or self._paused:
+            return
+        if name == "idle":
+            self.play_state("idle")
+        elif name != "random":
+            self.play_interaction(name, intense=name == "jumping")
 
     def set_always_on_top(self, enabled: bool) -> None:
         position = self.pos()
@@ -682,7 +784,7 @@ class DesktopPet(QWidget):
             self,
             f"关于 {APP_NAME}",
             f"{APP_NAME} {APP_VERSION}\n\n"
-            "单击明显互动 · 双击跳跃 · 自动躺下休息 · 右键打开动作菜单\n"
+            "单击明显互动 · 双击跳跃 · 可设置默认动作 · 拖动显示跑动动画\n"
             "角色形象版权归 San-X Co., Ltd. 所有，仅供个人非商业实验。",
         )
 
@@ -730,11 +832,25 @@ class MenuBarController:
         interactions.addAction("环顾四周", self._show_and_look)
         interactions.addAction("随机动作", self._show_and_random)
 
+        defaults = QMenu("默认动作", self.menu)
+        self.menu.addMenu(defaults)
+        self.default_action_group = QActionGroup(defaults)
+        self.default_action_group.setExclusive(True)
+        self.default_action_actions: dict[str, QAction] = {}
+        for name, label in DEFAULT_ACTION_OPTIONS:
+            action = defaults.addAction(label)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda checked=False, value=name: self.pet.set_default_action(value)
+            )
+            self.default_action_group.addAction(action)
+            self.default_action_actions[name] = action
+
         self.menu.addSeparator()
         self.pause_action = self.menu.addAction("暂停动画")
         self.pause_action.triggered.connect(self._toggle_pause)
 
-        self.auto_action = self.menu.addAction("自动随机动作")
+        self.auto_action = self.menu.addAction("启用自动动作")
         self.auto_action.setCheckable(True)
         self.auto_action.triggered.connect(self.pet.set_auto_actions)
 
@@ -755,7 +871,7 @@ class MenuBarController:
         self.menu.addSeparator()
         self.menu.addAction("关于 Tokage Desktop Pet", self.pet.show_about)
         self.menu.addAction("退出", self.app.quit)
-        self.menu._owned_submenus = [interactions, sizes]  # type: ignore[attr-defined]
+        self.menu._owned_submenus = [interactions, defaults, sizes]  # type: ignore[attr-defined]
         self._sync_state()
 
     def menu_labels(self) -> list[str]:
@@ -765,11 +881,17 @@ class MenuBarController:
         submenu = self.menu._owned_submenus[0]  # type: ignore[attr-defined]
         return [action.text() for action in submenu.actions()]
 
+    def default_action_labels(self) -> list[str]:
+        submenu = self.menu._owned_submenus[1]  # type: ignore[attr-defined]
+        return [action.text() for action in submenu.actions()]
+
     def _sync_state(self) -> None:
         self.visibility_action.setText("隐藏桌宠" if self.pet.isVisible() else "显示桌宠")
         self.pause_action.setText("继续动画" if self.pet.paused else "暂停动画")
         self.auto_action.setChecked(self.pet.auto_actions_enabled)
         self.top_action.setChecked(self.pet._always_on_top)
+        for name, action in self.default_action_actions.items():
+            action.setChecked(self.pet.default_action == name)
         for scale, action in self.size_actions.items():
             action.setChecked(math.isclose(self.pet.display_scale, scale))
 
@@ -892,6 +1014,13 @@ def _schedule_self_test(
         checks["jump_peak_height"] = pet.last_jump_height
         checks["jump_is_visibly_high"] = pet.last_jump_height >= 80
         pet._cancel_jump_motion()
+        pet.play_state("running-right")
+        running_start_frame = pet.frame_index
+        for _ in range(8):
+            pet.play_state("running-right", restart=False)
+            QTest.qWait(25)
+        checks["drag_animation_progressed"] = pet.frame_index != running_start_frame
+        pet.play_state("idle")
         start_position = pet.pos()
         start = pet.rect().center()
         end = start + QPoint(-36, -24)
@@ -926,6 +1055,8 @@ def _schedule_self_test(
         test_controls()
 
     def test_controls() -> None:
+        original_default_action = pet.default_action
+        pet.set_default_action("resting", preview=False, persist=False)
         mapped_cells: list[list[int]] = []
         for index in range(16):
             pet.show_look_direction(index * 22.5)
@@ -938,26 +1069,49 @@ def _schedule_self_test(
         menu = pet._build_context_menu()
         labels = [action.text() for action in menu.actions()]
         submenu = menu._owned_submenus[0]  # type: ignore[attr-defined]
+        default_submenu = menu._owned_submenus[1]  # type: ignore[attr-defined]
         interaction_labels = [action.text() for action in submenu.actions()]
+        default_labels = [action.text() for action in default_submenu.actions()]
         checks["context_menu_labels"] = labels
         checks["interaction_labels"] = interaction_labels
+        checks["context_default_action_labels"] = default_labels
         checks["context_menu_complete"] = all(
-            label in labels for label in ("互动动作", "自动随机动作", "始终置顶", "显示大小", "退出")
+            label in labels
+            for label in ("互动动作", "默认动作", "启用自动动作", "始终置顶", "显示大小", "退出")
         ) and all(
             label in interaction_labels
             for label in ("挥手", "跳一跳", "躺下休息", "等待", "有点难过")
+        )
+        checks["context_default_action_selected"] = any(
+            action.text() == "默认躺下" and action.isChecked()
+            for action in default_submenu.actions()
         )
         checks["menu_bar_available"] = menu_bar.available
         checks["menu_bar_visible"] = menu_bar.tray.isVisible()
         checks["menu_bar_labels"] = menu_bar.menu_labels()
         checks["menu_bar_interaction_labels"] = menu_bar.interaction_labels()
+        checks["menu_bar_default_action_labels"] = menu_bar.default_action_labels()
+        menu_bar._sync_state()
+        checks["menu_bar_default_action_selected"] = (
+            menu_bar.default_action_actions["resting"].isChecked()
+        )
+        expected_default_labels = [label for _, label in DEFAULT_ACTION_OPTIONS]
+        checks["default_action_menus_complete"] = (
+            default_labels == expected_default_labels
+            and checks["menu_bar_default_action_labels"] == expected_default_labels
+        )
+        checks["default_action_sync"] = (
+            checks["context_default_action_selected"]
+            and checks["menu_bar_default_action_selected"]
+        )
         checks["menu_bar_controls_complete"] = all(
             label in checks["menu_bar_labels"]
             for label in (
                 "隐藏桌宠",
                 "互动动作",
+                "默认动作",
                 "暂停动画",
-                "自动随机动作",
+                "启用自动动作",
                 "始终置顶",
                 "显示大小",
                 "回到右下角",
@@ -967,6 +1121,14 @@ def _schedule_self_test(
             label in checks["menu_bar_interaction_labels"] for label in ("明显跳跃", "躺下休息")
         )
 
+        pet.set_auto_actions(True)
+        pet.set_default_action("jumping", preview=False, persist=False)
+        pet.play_state("idle")
+        pet._play_random_action()
+        checks["default_action_execution"] = pet.state_name == "jumping"
+        pet._cancel_jump_motion()
+        pet.set_default_action(original_default_action, preview=False, persist=False)
+        pet.play_state("idle")
         pet.set_display_scale(1.25)
         checks["scaled_size"] = [pet.width(), pet.height()]
         pet.toggle_pause()
@@ -985,6 +1147,7 @@ def _schedule_self_test(
             "double_click_state",
             "double_click_particles",
             "jump_is_visibly_high",
+            "drag_animation_progressed",
             "drag_state_returned_idle",
             "rest_lies_down",
             "rest_breathes_while_sleeping",
@@ -994,6 +1157,9 @@ def _schedule_self_test(
             "menu_bar_available",
             "menu_bar_visible",
             "menu_bar_controls_complete",
+            "default_action_menus_complete",
+            "default_action_sync",
+            "default_action_execution",
             "paused",
             "resumed",
             "transparent_background",

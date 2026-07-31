@@ -33,10 +33,10 @@ mkdir -p "$ROOT_DIR/build/pyinstaller" "$ROOT_DIR/build/spec" "$ROOT_DIR/dist/ma
 
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
   || /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$APP_BUNDLE/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.2.0" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
-  || /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.2.0" "$APP_BUNDLE/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 3" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
-  || /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 3" "$APP_BUNDLE/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.3.0" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
+  || /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.3.0" "$APP_BUNDLE/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 4" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null \
+  || /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 4" "$APP_BUNDLE/Contents/Info.plist"
 
 codesign --force --deep --sign - "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
