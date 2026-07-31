@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from src.desktop_pet import ANIMATIONS, DEFAULT_ATLAS, DesktopPet
+from src.desktop_pet import ANIMATIONS, DEFAULT_ATLAS, DesktopPet, MenuBarController
 
 
 class DesktopPetTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class DesktopPetTests(unittest.TestCase):
         self.assertEqual(self.pet._atlas.size().height(), 2288)
         self.assertEqual(set(ANIMATIONS), {
             "idle", "running-right", "running-left", "waving", "jumping",
-            "failed", "waiting", "running", "review",
+            "failed", "resting", "waiting", "running", "review",
         })
         for state, spec in ANIMATIONS.items():
             self.pet.play_state(state)
@@ -49,16 +49,54 @@ class DesktopPetTests(unittest.TestCase):
     def test_single_and_double_click_actions_and_effects(self) -> None:
         self.pet._handle_single_click()
         self.assertEqual(self.pet.state_name, "waving")
-        self.assertGreater(len(self.pet._particles), 0)
+        self.assertGreaterEqual(len(self.pet._particles), 18)
+        self.assertGreaterEqual(len(self.pet._interaction_rings), 2)
         self.pet._handle_double_click()
         self.assertEqual(self.pet.state_name, "jumping")
-        self.assertGreaterEqual(len(self.pet._particles), 12)
+        self.assertGreaterEqual(len(self.pet._particles), 28)
+        self.assertGreaterEqual(len(self.pet._interaction_rings), 3)
+
+    def test_single_click_has_visible_reaction_bounce(self) -> None:
+        origin = self.pet.pos()
+        self.pet._handle_single_click()
+        QTest.qWait(220)
+        self.assertGreaterEqual(self.pet.last_reaction_height, 18)
+        self.assertLessEqual(self.pet.y(), origin.y() - 18)
+        QTest.qWait(260)
+        self.assertEqual(self.pet.pos(), origin)
 
     def test_real_double_click_does_not_fall_through_to_single_click(self) -> None:
         QTest.mouseDClick(self.pet, Qt.MouseButton.LeftButton, pos=self.pet.rect().center())
         self.assertEqual(self.pet.state_name, "jumping")
         QTest.qWait(QApplication.doubleClickInterval() + 50)
         self.assertEqual(self.pet.state_name, "jumping")
+
+    def test_jump_has_visible_vertical_lift_and_lands_at_origin(self) -> None:
+        origin = self.pet.pos()
+        self.pet.play_state("jumping")
+        QTest.qWait(430)
+        self.assertGreaterEqual(self.pet.last_jump_height, 80)
+        self.assertLessEqual(self.pet.y(), origin.y() - 80)
+        QTest.qWait(520)
+        self.assertEqual(self.pet.pos(), origin)
+        self.assertEqual(self.pet.state_name, "idle")
+
+    def test_resting_lies_down_holds_and_wakes(self) -> None:
+        self.pet.play_state("resting")
+        self.pet._frame_timer.stop()
+        for _ in range(4):
+            self.pet._advance_frame()
+        self.assertEqual(self.pet.rest_phase, "sleeping")
+        self.assertEqual(self.pet._current_cell(), (5, 4))
+        self.pet._advance_frame()
+        self.assertEqual(self.pet._current_cell(), (5, 3))
+        self.pet._begin_waking()
+        self.pet._frame_timer.stop()
+        self.assertEqual(self.pet.rest_phase, "waking")
+        self.assertEqual(self.pet._current_cell(), (5, 5))
+        for _ in range(3):
+            self.pet._advance_frame()
+        self.assertEqual(self.pet.state_name, "idle")
 
     def test_all_sixteen_look_directions_map_to_v2_rows(self) -> None:
         for index in range(16):
@@ -95,8 +133,27 @@ class DesktopPetTests(unittest.TestCase):
         self.assertIsNotNone(interactions)
         interaction_labels = [action.text() for action in interactions.actions()]
         self.assertEqual(interaction_labels[:6], [
-            "挥手", "跳一跳", "等待", "认真工作", "检查成果", "有点难过",
+            "挥手", "跳一跳", "躺下休息", "等待", "认真工作", "检查成果",
         ])
+        self.assertIn("有点难过", interaction_labels)
+
+    def test_macos_menu_bar_controller_contains_all_controls(self) -> None:
+        controller = MenuBarController(self.app, self.pet, show_icon=False)
+        labels = controller.menu_labels()
+        self.assertIn("隐藏桌宠", labels)
+        self.assertIn("互动动作", labels)
+        self.assertIn("暂停动画", labels)
+        self.assertIn("自动随机动作", labels)
+        self.assertIn("始终置顶", labels)
+        self.assertIn("显示大小", labels)
+        self.assertIn("回到右下角", labels)
+        self.assertIn("退出", labels)
+        self.assertIn("明显跳跃", controller.interaction_labels())
+        self.assertIn("躺下休息", controller.interaction_labels())
+        controller.toggle_pet_visibility()
+        self.assertFalse(self.pet.isVisible())
+        controller.toggle_pet_visibility()
+        self.assertTrue(self.pet.isVisible())
 
 
 if __name__ == "__main__":

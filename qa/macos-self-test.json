@@ -1,6 +1,6 @@
 {
   "app": "Tokage Desktop Pet",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "environment": {
     "macOS": "26.5",
     "architecture": "arm64",
@@ -15,10 +15,34 @@
     "animation_progressed": true,
     "single_click_state": true,
     "single_click_particles": true,
+    "single_click_feedback_particles": 18,
+    "single_click_feedback_rings": 2,
+    "single_click_reaction_height": 22,
+    "single_click_effect_is_obvious": true,
     "double_click_state": true,
     "double_click_particles": true,
+    "double_click_feedback_particles": 28,
+    "double_click_feedback_rings": 3,
+    "jump_peak_height": 96,
+    "jump_is_visibly_high": true,
     "drag_delta": [-36, -24],
     "drag_state_returned_idle": true,
+    "rest_settling_cells": [
+      [5, 0],
+      [5, 1],
+      [5, 2],
+      [5, 3],
+      [5, 4]
+    ],
+    "rest_lies_down": true,
+    "rest_breathes_while_sleeping": true,
+    "rest_waking_cells": [
+      [5, 5],
+      [5, 6],
+      [5, 7],
+      [0, 0]
+    ],
+    "rest_returns_idle": true,
     "look_direction_cells": [
       [9, 0],
       [9, 1],
@@ -51,6 +75,7 @@
     "interaction_labels": [
       "挥手",
       "跳一跳",
+      "躺下休息",
       "等待",
       "认真工作",
       "检查成果",
@@ -59,6 +84,31 @@
       "随机动作"
     ],
     "context_menu_complete": true,
+    "menu_bar_available": true,
+    "menu_bar_visible": true,
+    "menu_bar_labels": [
+      "隐藏桌宠",
+      "互动动作",
+      "暂停动画",
+      "自动随机动作",
+      "始终置顶",
+      "显示大小",
+      "回到右下角",
+      "关于 Tokage Desktop Pet",
+      "退出"
+    ],
+    "menu_bar_interaction_labels": [
+      "挥手",
+      "明显跳跃",
+      "躺下休息",
+      "等待",
+      "认真工作",
+      "检查成果",
+      "有点难过",
+      "环顾四周",
+      "随机动作"
+    ],
+    "menu_bar_controls_complete": true,
     "scaled_size": [240, 260],
     "paused": true,
     "resumed": true,

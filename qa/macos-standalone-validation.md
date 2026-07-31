@@ -8,6 +8,10 @@
 - `.app` 打包与启动：通过
 - DMG 创建、挂载与只读校验：通过
 - 单击、双击、拖动、右键菜单与多动作状态机：通过
+- 明显起跳与落地复位：通过（默认尺寸峰值 96 pt）
+- 自动躺卧休息、呼吸循环与起身复位：通过
+- 明显点击反馈：通过（22 pt 回应弹跳、18/28 粒子、2/3 层扩散圆环）
+- macOS 菜单栏图标与控制菜单：通过
 - 透明、无边框、始终置顶、Tool Window：通过
 - 公开互联网分发的 Gatekeeper/Notarization：未完成（当前为 adhoc 签名）
 
@@ -21,7 +25,7 @@
 
 ## 自动化验证
 
-`python -m unittest discover -s tests -v`：7/7 通过。
+`python -m unittest discover -s tests -v`：11/11 通过。
 
 覆盖：
 
@@ -29,21 +33,27 @@
 - 9 个标准动作状态与帧推进
 - 16 个方向姿态映射
 - 单击互动与粒子效果
-- 双击跳跃，以及双击不穿透为单击
+- 双击触发约 96 pt 抛物线起跳并准确落回原位
+- 单击触发约 22 pt 回应弹跳、18 个粒子和两层扩散圆环
+- 双击触发 28 个粒子和三层扩散圆环
+- 闲置或菜单操作触发站立→躺下→呼吸休息→起身→待机完整状态机
+- 拖动期间取消跳跃位移，避免窗口位置漂移
 - 暂停/继续、自动动作、置顶、75%–150% 缩放
 - 右键菜单和 8 项互动动作
+- macOS 菜单栏图标及显示/隐藏、躺下休息、互动、暂停、随机动作、置顶、缩放、复位与退出控制
 
-最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。完整结果见 `macos-self-test.json`。
+最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。菜单栏组件在 Cocoa 环境中报告 `available: true`、`visible: true`，完整结果见 `macos-self-test.json`。
 
 ## 产物验证
 
+- 版本：1.2.0（bundle 3）
 - `.app`：100 MB
 - DMG：42 MB
 - 主可执行文件：Mach-O 64-bit arm64
-- `LSUIElement=true`：不占用 Dock
+- `LSUIElement=true`：不占用 Dock，由菜单栏组件承担常驻控制
 - `codesign --verify --deep --strict`：通过
 - `hdiutil verify`：VALID
-- DMG SHA-256：`6417a6dbac759fe7dd6bdfbd35415b6563ca47a79b2c35d6427c76eb5eec3390`
+- DMG SHA-256：`4c4ec1c8dab988f7d1f08d78390b9e9e0774c2d164c434d140835ec8b4d25af4`
 - DMG 挂载内容：`Tokage Desktop Pet.app` 与 `Applications` 快捷方式
 
 ## 签名说明

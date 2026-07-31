@@ -1,21 +1,32 @@
 from __future__ import annotations
 
+import json
 import math
 import random
-import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
-from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QMouseEvent, QPainter, QPixmap
-from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QWidget
+from PySide6.QtCore import (
+    QAbstractAnimation,
+    QPoint,
+    QPointF,
+    QRectF,
+    Qt,
+    QTimer,
+    QVariantAnimation,
+)
+from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QMouseEvent, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon, QWidget
 
 
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.2.0"
+JUMP_HEIGHT = 96
+REACTION_HEIGHT = 22
+REST_HOLD_MS = 4200
 
 
 def resource_root() -> Path:
@@ -42,8 +53,9 @@ ANIMATIONS: dict[str, AnimationSpec] = {
     "running-right": AnimationSpec(1, 8, 105),
     "running-left": AnimationSpec(2, 8, 105),
     "waving": AnimationSpec(3, 4, 150, False),
-    "jumping": AnimationSpec(4, 5, 125, False),
+    "jumping": AnimationSpec(4, 5, 170, False),
     "failed": AnimationSpec(5, 8, 165, False),
+    "resting": AnimationSpec(5, 8, 240, False),
     "waiting": AnimationSpec(6, 6, 175, False),
     "running": AnimationSpec(7, 6, 135, False),
     "review": AnimationSpec(8, 6, 155, False),
@@ -56,6 +68,14 @@ class Particle:
     velocity: QPointF
     color: QColor
     radius: float
+    life: float = 1.0
+
+
+@dataclass
+class InteractionRing:
+    center: QPointF
+    radius: float
+    color: QColor
     life: float = 1.0
 
 
@@ -87,7 +107,15 @@ class DesktopPet(QWidget):
         self._suppress_click_release = False
         self._last_drag_x = 0
         self._particles: list[Particle] = []
+        self._interaction_rings: list[InteractionRing] = []
+        self._last_feedback_particle_count = 0
+        self._last_feedback_ring_count = 0
         self._click_cycle = 0
+        self._jump_base_position: QPoint | None = None
+        self._last_jump_height = 0
+        self._reaction_base_position: QPoint | None = None
+        self._last_reaction_height = 0
+        self._rest_phase: str | None = None
 
         self.setWindowTitle(APP_NAME)
         self.setAccessibleName(APP_NAME)
@@ -114,11 +142,36 @@ class DesktopPet(QWidget):
         self._auto_timer.timeout.connect(self._play_random_action)
         self._schedule_auto_action()
 
+        self._rest_schedule_timer = QTimer(self)
+        self._rest_schedule_timer.setSingleShot(True)
+        self._rest_schedule_timer.timeout.connect(self._try_auto_rest)
+
+        self._rest_hold_timer = QTimer(self)
+        self._rest_hold_timer.setSingleShot(True)
+        self._rest_hold_timer.timeout.connect(self._begin_waking)
+
         self._effect_timer = QTimer(self)
         self._effect_timer.setInterval(33)
         self._effect_timer.timeout.connect(self._update_particles)
 
+        self._jump_animation = QVariantAnimation(self)
+        self._jump_animation.setStartValue(0.0)
+        self._jump_animation.setEndValue(1.0)
+        self._jump_animation.setDuration(
+            ANIMATIONS["jumping"].frames * ANIMATIONS["jumping"].interval_ms
+        )
+        self._jump_animation.valueChanged.connect(self._update_jump_position)
+        self._jump_animation.finished.connect(self._finish_jump_motion)
+
+        self._reaction_animation = QVariantAnimation(self)
+        self._reaction_animation.setStartValue(0.0)
+        self._reaction_animation.setEndValue(1.0)
+        self._reaction_animation.setDuration(420)
+        self._reaction_animation.valueChanged.connect(self._update_reaction_position)
+        self._reaction_animation.finished.connect(self._finish_reaction_motion)
+
         self.move_to_bottom_right()
+        self._schedule_rest()
 
     @property
     def state_name(self) -> str:
@@ -140,6 +193,21 @@ class DesktopPet(QWidget):
     def display_scale(self) -> float:
         return self._scale
 
+    @property
+    def last_jump_height(self) -> int:
+        return self._last_jump_height
+
+    @property
+    def last_reaction_height(self) -> int:
+        return self._last_reaction_height
+
+    @property
+    def rest_phase(self) -> str | None:
+        return self._rest_phase
+
+    def status_icon(self) -> QIcon:
+        return QIcon(self._atlas.copy(0, 0, CELL_WIDTH, CELL_HEIGHT))
+
     def _apply_window_flags(self) -> None:
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool
         if self._always_on_top:
@@ -151,6 +219,17 @@ class DesktopPet(QWidget):
             raise ValueError(f"Unknown animation state: {name}")
         if self._paused and name != "idle":
             return
+        if name == "jumping":
+            self._cancel_reaction_motion()
+            self._start_jump_motion()
+        elif self._jump_animation.state() == QAbstractAnimation.State.Running:
+            self._cancel_jump_motion()
+        if name == "resting":
+            self._rest_phase = "settling"
+            self._rest_hold_timer.stop()
+        elif self._state_name == "resting":
+            self._rest_hold_timer.stop()
+            self._rest_phase = None
         self._fixed_cell = None
         self._state_name = name
         if restart:
@@ -160,7 +239,59 @@ class DesktopPet(QWidget):
             self._frame_timer.start()
         self.update()
 
+    def _start_jump_motion(self) -> None:
+        self._cancel_jump_motion()
+        self._jump_base_position = self.pos()
+        self._last_jump_height = 0
+        self._jump_animation.start()
+
+    def _update_jump_position(self, value: object) -> None:
+        if self._jump_base_position is None:
+            return
+        progress = float(value)
+        height = round(JUMP_HEIGHT * self._scale * 4.0 * progress * (1.0 - progress))
+        self._last_jump_height = max(self._last_jump_height, height)
+        self.move(self._jump_base_position.x(), self._jump_base_position.y() - height)
+
+    def _finish_jump_motion(self) -> None:
+        if self._jump_base_position is not None:
+            self.move(self._jump_base_position)
+        self._jump_base_position = None
+
+    def _cancel_jump_motion(self) -> None:
+        if self._jump_animation.state() == QAbstractAnimation.State.Running:
+            self._jump_animation.stop()
+        self._finish_jump_motion()
+
+    def _start_reaction_motion(self) -> None:
+        self._cancel_jump_motion()
+        self._cancel_reaction_motion()
+        self._reaction_base_position = self.pos()
+        self._last_reaction_height = 0
+        self._reaction_animation.start()
+
+    def _update_reaction_position(self, value: object) -> None:
+        if self._reaction_base_position is None:
+            return
+        progress = float(value)
+        height = round(REACTION_HEIGHT * self._scale * math.sin(math.pi * progress))
+        self._last_reaction_height = max(self._last_reaction_height, height)
+        self.move(self._reaction_base_position.x(), self._reaction_base_position.y() - height)
+
+    def _finish_reaction_motion(self) -> None:
+        if self._reaction_base_position is not None:
+            self.move(self._reaction_base_position)
+        self._reaction_base_position = None
+
+    def _cancel_reaction_motion(self) -> None:
+        if self._reaction_animation.state() == QAbstractAnimation.State.Running:
+            self._reaction_animation.stop()
+        self._finish_reaction_motion()
+
     def show_look_direction(self, degrees: float) -> None:
+        if self._state_name == "resting":
+            self._rest_hold_timer.stop()
+            self._rest_phase = None
         direction_index = int(round((degrees % 360.0) / 22.5)) % 16
         if direction_index < 8:
             self._fixed_cell = (9, direction_index)
@@ -174,6 +305,9 @@ class DesktopPet(QWidget):
     def _advance_frame(self) -> None:
         if self._paused or self._fixed_cell is not None:
             return
+        if self._state_name == "resting":
+            self._advance_rest_frame()
+            return
         spec = ANIMATIONS[self._state_name]
         next_frame = self._frame_index + 1
         if next_frame >= spec.frames:
@@ -186,6 +320,51 @@ class DesktopPet(QWidget):
             self._frame_index = next_frame
         self.update()
 
+    def _advance_rest_frame(self) -> None:
+        if self._rest_phase == "settling":
+            self._frame_index = min(4, self._frame_index + 1)
+            if self._frame_index == 4:
+                self._rest_phase = "sleeping"
+                self._rest_hold_timer.start(REST_HOLD_MS)
+        elif self._rest_phase == "sleeping":
+            self._frame_index = 3 if self._frame_index == 4 else 4
+        elif self._rest_phase == "waking":
+            if self._frame_index < 7:
+                self._frame_index += 1
+            else:
+                self._return_to_idle()
+                return
+        self.update()
+
+    def _begin_waking(self) -> None:
+        if self._state_name != "resting":
+            return
+        self._rest_hold_timer.stop()
+        self._rest_phase = "waking"
+        self._frame_index = 5
+        self._frame_timer.setInterval(180)
+        if not self._paused:
+            self._frame_timer.start()
+        self.update()
+
+    def _try_auto_rest(self) -> None:
+        if self._auto_actions and not self._paused and self._state_name == "idle":
+            self.play_state("resting")
+        else:
+            self._schedule_rest(short_retry=True)
+
+    def _schedule_rest(self, *, short_retry: bool = False) -> None:
+        if not self._auto_actions or self._paused:
+            self._rest_schedule_timer.stop()
+            return
+        delay = random.randint(5000, 8000) if short_retry else random.randint(18000, 28000)
+        self._rest_schedule_timer.start(delay)
+
+    def _note_user_activity(self) -> None:
+        self._schedule_rest()
+        if self._state_name == "resting":
+            self._begin_waking()
+
     def _return_to_idle(self) -> None:
         if self._paused or self._drag_offset is not None:
             return
@@ -196,18 +375,29 @@ class DesktopPet(QWidget):
             return
         action = ("waving", "review", "waiting")[self._click_cycle % 3]
         self._click_cycle += 1
-        self._spawn_particles(QPointF(self.width() * 0.58, self.height() * 0.36), 7)
-        self.play_state(action)
+        self.play_interaction(action)
 
     def _handle_double_click(self) -> None:
         self._single_click_timer.stop()
         self._suppress_click_release = True
-        self._spawn_particles(QPointF(self.width() * 0.5, self.height() * 0.28), 12)
-        self.play_state("jumping")
+        self.play_interaction("jumping", intense=True)
+
+    def play_interaction(self, name: str, *, intense: bool = False) -> None:
+        self._note_user_activity()
+        origin = QPointF(self.width() * 0.52, self.height() * 0.34)
+        self._spawn_particles(origin, 28 if intense else 18)
+        self._spawn_interaction_rings(origin, 3 if intense else 2)
+        if name != "jumping":
+            self._start_reaction_motion()
+        self.play_state(name)
 
     def _play_random_action(self) -> None:
         if self._auto_actions and not self._paused and self._state_name == "idle":
-            self.play_state(random.choice(("waving", "jumping", "waiting", "running", "review")))
+            self.play_state(
+                random.choice(
+                    ("waving", "jumping", "waiting", "running", "review", "resting", "resting")
+                )
+            )
         self._schedule_auto_action()
 
     def _schedule_auto_action(self) -> None:
@@ -217,6 +407,7 @@ class DesktopPet(QWidget):
             self._auto_timer.stop()
 
     def _spawn_particles(self, origin: QPointF, count: int) -> None:
+        self._last_feedback_particle_count = count
         colors = (
             QColor("#f6a9c5"),
             QColor("#b9e8ed"),
@@ -227,10 +418,21 @@ class DesktopPet(QWidget):
             self._particles.append(
                 Particle(
                     QPointF(origin.x() + random.uniform(-15, 15), origin.y() + random.uniform(-8, 8)),
-                    QPointF(random.uniform(-0.8, 0.8), random.uniform(-2.4, -1.0)),
+                    QPointF(random.uniform(-1.8, 1.8), random.uniform(-4.0, -1.8)),
                     random.choice(colors),
-                    random.uniform(3.0, 7.0),
+                    random.uniform(5.0, 10.0),
                 )
+            )
+        if not self._effect_timer.isActive():
+            self._effect_timer.start()
+        self.update()
+
+    def _spawn_interaction_rings(self, origin: QPointF, count: int) -> None:
+        self._last_feedback_ring_count = count
+        colors = (QColor("#f6a9c5"), QColor("#8edbe3"), QColor("#f7c95c"))
+        for index in range(count):
+            self._interaction_rings.append(
+                InteractionRing(QPointF(origin), 8.0 + index * 6.0, colors[index % len(colors)])
             )
         if not self._effect_timer.isActive():
             self._effect_timer.start()
@@ -245,7 +447,14 @@ class DesktopPet(QWidget):
             if particle.life > 0:
                 alive.append(particle)
         self._particles = alive
-        if not alive:
+        rings: list[InteractionRing] = []
+        for ring in self._interaction_rings:
+            ring.radius += 2.8
+            ring.life -= 0.06
+            if ring.life > 0:
+                rings.append(ring)
+        self._interaction_rings = rings
+        if not alive and not rings:
             self._effect_timer.stop()
         self.update()
 
@@ -269,9 +478,18 @@ class DesktopPet(QWidget):
             painter.setBrush(color)
             radius = particle.radius * (0.7 + particle.life * 0.3)
             painter.drawEllipse(particle.position, radius, radius)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        for ring in self._interaction_rings:
+            color = QColor(ring.color)
+            color.setAlphaF(max(0.0, min(1.0, ring.life)) * 0.8)
+            painter.setPen(QPen(color, max(1.5, 3.5 * ring.life)))
+            painter.drawEllipse(ring.center, ring.radius, ring.radius)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
         if event.button() == Qt.MouseButton.LeftButton:
+            self._cancel_jump_motion()
+            self._cancel_reaction_motion()
+            self._note_user_activity()
             self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             self._press_global = event.globalPosition().toPoint()
             self._dragged = False
@@ -342,6 +560,7 @@ class DesktopPet(QWidget):
         action_specs = (
             ("挥手", "waving"),
             ("跳一跳", "jumping"),
+            ("躺下休息", "resting"),
             ("等待", "waiting"),
             ("认真工作", "running"),
             ("检查成果", "review"),
@@ -349,7 +568,7 @@ class DesktopPet(QWidget):
         )
         for label, state in action_specs:
             action = actions_menu.addAction(label)
-            action.triggered.connect(lambda checked=False, name=state: self.play_state(name))
+            action.triggered.connect(lambda checked=False, name=state: self.play_interaction(name))
         look_action = actions_menu.addAction("环顾四周")
         look_action.triggered.connect(self._look_around)
         random_action = actions_menu.addAction("随机动作")
@@ -402,16 +621,22 @@ class DesktopPet(QWidget):
     def toggle_pause(self) -> None:
         self._paused = not self._paused
         if self._paused:
+            self._cancel_jump_motion()
+            self._cancel_reaction_motion()
             self._single_click_timer.stop()
             self._look_reset_timer.stop()
+            self._rest_schedule_timer.stop()
+            self._rest_hold_timer.stop()
             self._frame_timer.stop()
         else:
             self.play_state("idle")
+            self._schedule_rest()
         self.update()
 
     def set_auto_actions(self, enabled: bool) -> None:
         self._auto_actions = bool(enabled)
         self._schedule_auto_action()
+        self._schedule_rest()
 
     def set_always_on_top(self, enabled: bool) -> None:
         position = self.pos()
@@ -425,6 +650,8 @@ class DesktopPet(QWidget):
     def set_display_scale(self, scale: float) -> None:
         if scale not in (0.75, 1.0, 1.25, 1.5):
             raise ValueError(f"Unsupported display scale: {scale}")
+        self._cancel_jump_motion()
+        self._cancel_reaction_motion()
         center = self.frameGeometry().center()
         self._scale = scale
         self.resize(round(CELL_WIDTH * scale), round(CELL_HEIGHT * scale))
@@ -433,6 +660,8 @@ class DesktopPet(QWidget):
         self.update()
 
     def move_to_bottom_right(self) -> None:
+        self._cancel_jump_motion()
+        self._cancel_reaction_motion()
         screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
         if screen is None:
             return
@@ -453,9 +682,135 @@ class DesktopPet(QWidget):
             self,
             f"关于 {APP_NAME}",
             f"{APP_NAME} {APP_VERSION}\n\n"
-            "单击互动 · 双击跳跃 · 拖动移动 · 右键打开动作菜单\n"
+            "单击明显互动 · 双击跳跃 · 自动躺下休息 · 右键打开动作菜单\n"
             "角色形象版权归 San-X Co., Ltd. 所有，仅供个人非商业实验。",
         )
+
+
+class MenuBarController:
+    """macOS menu-bar controller backed by QSystemTrayIcon."""
+
+    ACTION_SPECS = (
+        ("挥手", "waving"),
+        ("明显跳跃", "jumping"),
+        ("躺下休息", "resting"),
+        ("等待", "waiting"),
+        ("认真工作", "running"),
+        ("检查成果", "review"),
+        ("有点难过", "failed"),
+    )
+
+    def __init__(self, app: QApplication, pet: DesktopPet, *, show_icon: bool = True) -> None:
+        self.app = app
+        self.pet = pet
+        self.tray = QSystemTrayIcon(pet.status_icon(), pet)
+        self.tray.setToolTip(APP_NAME)
+        self.menu = QMenu()
+        self._build_menu()
+        self.tray.setContextMenu(self.menu)
+        self.tray.activated.connect(self._handle_activation)
+        self.menu.aboutToShow.connect(self._sync_state)
+        self.app.aboutToQuit.connect(self.tray.hide)
+        if show_icon and QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.show()
+
+    @property
+    def available(self) -> bool:
+        return QSystemTrayIcon.isSystemTrayAvailable()
+
+    def _build_menu(self) -> None:
+        self.visibility_action = self.menu.addAction("隐藏桌宠")
+        self.visibility_action.triggered.connect(self.toggle_pet_visibility)
+
+        interactions = QMenu("互动动作", self.menu)
+        self.menu.addMenu(interactions)
+        for label, state in self.ACTION_SPECS:
+            action = interactions.addAction(label)
+            action.triggered.connect(lambda checked=False, name=state: self._show_and_play(name))
+        interactions.addAction("环顾四周", self._show_and_look)
+        interactions.addAction("随机动作", self._show_and_random)
+
+        self.menu.addSeparator()
+        self.pause_action = self.menu.addAction("暂停动画")
+        self.pause_action.triggered.connect(self._toggle_pause)
+
+        self.auto_action = self.menu.addAction("自动随机动作")
+        self.auto_action.setCheckable(True)
+        self.auto_action.triggered.connect(self.pet.set_auto_actions)
+
+        self.top_action = self.menu.addAction("始终置顶")
+        self.top_action.setCheckable(True)
+        self.top_action.triggered.connect(self.pet.set_always_on_top)
+
+        sizes = QMenu("显示大小", self.menu)
+        self.menu.addMenu(sizes)
+        self.size_actions: dict[float, QAction] = {}
+        for label, scale in (("75%", 0.75), ("100%", 1.0), ("125%", 1.25), ("150%", 1.5)):
+            action = sizes.addAction(label)
+            action.setCheckable(True)
+            action.triggered.connect(lambda checked=False, value=scale: self.pet.set_display_scale(value))
+            self.size_actions[scale] = action
+
+        self.menu.addAction("回到右下角", self._show_and_reset)
+        self.menu.addSeparator()
+        self.menu.addAction("关于 Tokage Desktop Pet", self.pet.show_about)
+        self.menu.addAction("退出", self.app.quit)
+        self.menu._owned_submenus = [interactions, sizes]  # type: ignore[attr-defined]
+        self._sync_state()
+
+    def menu_labels(self) -> list[str]:
+        return [action.text() for action in self.menu.actions() if not action.isSeparator()]
+
+    def interaction_labels(self) -> list[str]:
+        submenu = self.menu._owned_submenus[0]  # type: ignore[attr-defined]
+        return [action.text() for action in submenu.actions()]
+
+    def _sync_state(self) -> None:
+        self.visibility_action.setText("隐藏桌宠" if self.pet.isVisible() else "显示桌宠")
+        self.pause_action.setText("继续动画" if self.pet.paused else "暂停动画")
+        self.auto_action.setChecked(self.pet.auto_actions_enabled)
+        self.top_action.setChecked(self.pet._always_on_top)
+        for scale, action in self.size_actions.items():
+            action.setChecked(math.isclose(self.pet.display_scale, scale))
+
+    def _ensure_visible(self) -> None:
+        if not self.pet.isVisible():
+            self.pet.show()
+        self.pet.raise_()
+
+    def toggle_pet_visibility(self) -> None:
+        if self.pet.isVisible():
+            self.pet.hide()
+        else:
+            self._ensure_visible()
+        self._sync_state()
+
+    def _show_and_play(self, state: str) -> None:
+        self._ensure_visible()
+        self.pet.play_interaction(state, intense=state == "jumping")
+
+    def _show_and_look(self) -> None:
+        self._ensure_visible()
+        self.pet._look_around()
+
+    def _show_and_random(self) -> None:
+        self._ensure_visible()
+        self.pet._play_random_action()
+
+    def _toggle_pause(self) -> None:
+        self.pet.toggle_pause()
+        self._sync_state()
+
+    def _show_and_reset(self) -> None:
+        self._ensure_visible()
+        self.pet.move_to_bottom_right()
+
+    def _handle_activation(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self.toggle_pet_visibility()
 
 
 def main() -> int:
@@ -474,16 +829,23 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     app.setApplicationDisplayName(APP_NAME)
     app.setApplicationVersion(APP_VERSION)
-    app.setQuitOnLastWindowClosed(True)
-    app.setWindowIcon(QIcon(str(DEFAULT_ATLAS)))
+    app.setQuitOnLastWindowClosed(False)
     pet = DesktopPet(DEFAULT_ATLAS)
+    app.setWindowIcon(pet.status_icon())
     pet.show()
+    menu_bar = MenuBarController(app, pet)
+    app._menu_bar_controller = menu_bar  # type: ignore[attr-defined]
     if self_test_output is not None:
-        _schedule_self_test(app, pet, self_test_output)
+        _schedule_self_test(app, pet, menu_bar, self_test_output)
     return app.exec()
 
 
-def _schedule_self_test(app: QApplication, pet: DesktopPet, output_path: Path) -> None:
+def _schedule_self_test(
+    app: QApplication,
+    pet: DesktopPet,
+    menu_bar: MenuBarController,
+    output_path: Path,
+) -> None:
     """Exercise the frozen Cocoa app and persist a machine-readable report."""
     from PySide6.QtCore import QPoint
     from PySide6.QtTest import QTest
@@ -506,17 +868,30 @@ def _schedule_self_test(app: QApplication, pet: DesktopPet, output_path: Path) -
         checks["animation_progressed"] = pet.frame_index != initial_frame
         center = pet.rect().center()
         QTest.mouseClick(pet, Qt.MouseButton.LeftButton, pos=center)
-        QTimer.singleShot(QApplication.doubleClickInterval() + 80, test_double_click)
+        QTimer.singleShot(QApplication.doubleClickInterval() + 300, test_double_click)
 
     def test_double_click() -> None:
         checks["single_click_state"] = pet.state_name == "waving"
         checks["single_click_particles"] = len(pet._particles) > 0
+        checks["single_click_feedback_particles"] = pet._last_feedback_particle_count
+        checks["single_click_feedback_rings"] = pet._last_feedback_ring_count
+        checks["single_click_reaction_height"] = pet.last_reaction_height
+        checks["single_click_effect_is_obvious"] = (
+            pet._last_feedback_particle_count >= 18
+            and pet._last_feedback_ring_count >= 2
+            and pet.last_reaction_height >= 18
+        )
         QTest.mouseDClick(pet, Qt.MouseButton.LeftButton, pos=pet.rect().center())
-        QTimer.singleShot(80, test_drag)
+        QTimer.singleShot(430, test_drag)
 
     def test_drag() -> None:
         checks["double_click_state"] = pet.state_name == "jumping"
-        checks["double_click_particles"] = len(pet._particles) >= 12
+        checks["double_click_particles"] = len(pet._particles) >= 28
+        checks["double_click_feedback_particles"] = pet._last_feedback_particle_count
+        checks["double_click_feedback_rings"] = pet._last_feedback_ring_count
+        checks["jump_peak_height"] = pet.last_jump_height
+        checks["jump_is_visibly_high"] = pet.last_jump_height >= 80
+        pet._cancel_jump_motion()
         start_position = pet.pos()
         start = pet.rect().center()
         end = start + QPoint(-36, -24)
@@ -525,6 +900,29 @@ def _schedule_self_test(app: QApplication, pet: DesktopPet, output_path: Path) -
         QTest.mouseRelease(pet, Qt.MouseButton.LeftButton, pos=end)
         checks["drag_delta"] = [pet.x() - start_position.x(), pet.y() - start_position.y()]
         checks["drag_state_returned_idle"] = pet.state_name == "idle"
+        test_resting()
+
+    def test_resting() -> None:
+        pet.play_state("resting")
+        pet._frame_timer.stop()
+        settling_cells: list[list[int]] = [list(pet._current_cell())]
+        for _ in range(4):
+            pet._advance_frame()
+            settling_cells.append(list(pet._current_cell()))
+        checks["rest_settling_cells"] = settling_cells
+        checks["rest_lies_down"] = pet.rest_phase == "sleeping" and pet._current_cell() == (5, 4)
+        pet._advance_frame()
+        checks["rest_breathes_while_sleeping"] = (
+            pet.rest_phase == "sleeping" and pet._current_cell() == (5, 3)
+        )
+        pet._begin_waking()
+        pet._frame_timer.stop()
+        waking_cells: list[list[int]] = [list(pet._current_cell())]
+        for _ in range(3):
+            pet._advance_frame()
+            waking_cells.append(list(pet._current_cell()))
+        checks["rest_waking_cells"] = waking_cells
+        checks["rest_returns_idle"] = pet.state_name == "idle"
         test_controls()
 
     def test_controls() -> None:
@@ -545,9 +943,29 @@ def _schedule_self_test(app: QApplication, pet: DesktopPet, output_path: Path) -
         checks["interaction_labels"] = interaction_labels
         checks["context_menu_complete"] = all(
             label in labels for label in ("互动动作", "自动随机动作", "始终置顶", "显示大小", "退出")
-        ) and interaction_labels[:6] == [
-            "挥手", "跳一跳", "等待", "认真工作", "检查成果", "有点难过",
-        ]
+        ) and all(
+            label in interaction_labels
+            for label in ("挥手", "跳一跳", "躺下休息", "等待", "有点难过")
+        )
+        checks["menu_bar_available"] = menu_bar.available
+        checks["menu_bar_visible"] = menu_bar.tray.isVisible()
+        checks["menu_bar_labels"] = menu_bar.menu_labels()
+        checks["menu_bar_interaction_labels"] = menu_bar.interaction_labels()
+        checks["menu_bar_controls_complete"] = all(
+            label in checks["menu_bar_labels"]
+            for label in (
+                "隐藏桌宠",
+                "互动动作",
+                "暂停动画",
+                "自动随机动作",
+                "始终置顶",
+                "显示大小",
+                "回到右下角",
+                "退出",
+            )
+        ) and all(
+            label in checks["menu_bar_interaction_labels"] for label in ("明显跳跃", "躺下休息")
+        )
 
         pet.set_display_scale(1.25)
         checks["scaled_size"] = [pet.width(), pet.height()]
@@ -559,11 +977,35 @@ def _schedule_self_test(app: QApplication, pet: DesktopPet, output_path: Path) -
         checks["frameless"] = bool(pet.windowFlags() & Qt.WindowType.FramelessWindowHint)
         checks["always_on_top"] = bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         checks["tool_window"] = bool(pet.windowFlags() & Qt.WindowType.Tool)
-        checks["all_passed"] = all(
-            value is True
-            for key, value in checks.items()
-            if key not in {"drag_delta", "look_direction_cells", "context_menu_labels", "interaction_labels", "scaled_size"}
-        ) and checks["drag_delta"] == [-36, -24] and checks["scaled_size"] == [240, 260]
+        required_true = (
+            "animation_progressed",
+            "single_click_state",
+            "single_click_particles",
+            "single_click_effect_is_obvious",
+            "double_click_state",
+            "double_click_particles",
+            "jump_is_visibly_high",
+            "drag_state_returned_idle",
+            "rest_lies_down",
+            "rest_breathes_while_sleeping",
+            "rest_returns_idle",
+            "look_directions_complete",
+            "context_menu_complete",
+            "menu_bar_available",
+            "menu_bar_visible",
+            "menu_bar_controls_complete",
+            "paused",
+            "resumed",
+            "transparent_background",
+            "frameless",
+            "always_on_top",
+            "tool_window",
+        )
+        checks["all_passed"] = (
+            all(checks[key] is True for key in required_true)
+            and checks["drag_delta"] == [-36, -24]
+            and checks["scaled_size"] == [240, 260]
+        )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
