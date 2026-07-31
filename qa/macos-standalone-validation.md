@@ -15,7 +15,8 @@
 - 左右拖动连续跑动动画：通过
 - macOS 菜单栏图标与控制菜单：通过
 - 始终置顶安全层级切换：通过（关闭为 NSWindow level 0，开启为标准浮动 level 3）
-- 不再监听应用焦点变化反复抢层级：通过
+- 应用焦点变化时不再反复调用 `raise` 或激活桌宠：通过
+- 应用失焦后安全恢复 floating level 3，且活动窗口不变：通过
 - 置顶切换保持窗口可见、位置不变：通过
 - 透明像素原生鼠标穿透、角色实体保持互动：通过
 - 置顶设置持久化及右键/菜单栏同步：通过
@@ -55,24 +56,25 @@
 - 置顶切换后原生窗口句柄有效、窗口保持可见且坐标不变
 - 透明像素 alpha 0 时 `ignoresMouseEvents=true`，角色实体 alpha 255 时恢复为 `false`
 - 应用焦点变化不再触发 `raise`，避免干扰正常 macOS 窗口操作
+- 应用失焦时通过 `orderFrontRegardless` 恢复同层前置顺序，不成为 key window
 - 置顶选择通过 QSettings 跨重启保存，并与菜单栏勾选同步
 - macOS 应用失焦时 Tool Window 仍保持显示
 - 本机 IPC 单实例锁阻止第二只桌宠，并让重复启动显示已有实例
 - 右键菜单、互动动作和默认动作选择
 - macOS 菜单栏图标及显示/隐藏、躺下休息、互动、暂停、随机动作、置顶、缩放、复位与退出控制
 
-最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。自检直接读取 NSWindow level，确认置顶关闭/开启为 `0 → 3`；透明像素与实体像素分别验证原生鼠标穿透开启/关闭。同时用第二个 IPC guard 验证重复启动被拦截，并成功唤醒已隐藏的已有实例。完整结果见 `macos-self-test.json`。
+最终 DMG 内 `.app` 在真实 Cocoa 窗口运行 `--self-test-output`：`all_passed: true`。自检直接读取 NSWindow level，确认置顶关闭/开启为 `0 → 3`；模拟失焦后仍保持 level 3，且活动窗口对象不变。透明像素与实体像素分别验证原生鼠标穿透开启/关闭。同时用第二个 IPC guard 验证重复启动被拦截，并成功唤醒已隐藏的已有实例。完整结果见 `macos-self-test.json`。
 
 ## 产物验证
 
-- 版本：1.5.1（bundle 7）
+- 版本：1.5.2（bundle 8）
 - `.app`：100 MB
 - DMG：42 MB
 - 主可执行文件：Mach-O 64-bit arm64
 - `LSUIElement=true`：不占用 Dock，由菜单栏组件承担常驻控制
 - `codesign --verify --deep --strict`：通过
 - `hdiutil verify`：VALID
-- DMG SHA-256：`8cba2f084270af3dfe27412f014b85011a4b9b1d05f7678979e6e5f72050d684`
+- DMG SHA-256：`7d3bb58675aa04b1712f44755a43c14e5efe67b73812f8b4e3e77e97e4e53232`
 - DMG 挂载内容：`Tokage Desktop Pet.app` 与 `Applications` 快捷方式
 
 ## 签名说明

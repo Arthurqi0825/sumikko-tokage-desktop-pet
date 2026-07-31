@@ -1,6 +1,6 @@
 {
   "app": "Tokage Desktop Pet",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "atlas": {
     "path": "/Users/zhangziqi/Documents/Codex Pet & Desktop Pet Generation/tokage-build/dist/macos/Tokage Desktop Pet.app/Contents/Frameworks/assets/codex/tokage/spritesheet.webp",
     "width": 1536,
@@ -247,6 +247,8 @@
     "native_window_level_disabled": 0,
     "native_window_level_enabled": 3,
     "native_window_level_toggles": true,
+    "inactive_reorder_keeps_floating_level": true,
+    "inactive_reorder_does_not_steal_focus": true,
     "transparent_pixel_alpha": 0,
     "opaque_pixel_alpha": 255,
     "transparent_mouse_passthrough": true,

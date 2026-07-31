@@ -39,7 +39,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon,
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.5.2"
 SINGLE_INSTANCE_KEY = "com.local.tokage-desktop-pet.single-instance"
 MACOS_NORMAL_WINDOW_LEVEL = 0
 MACOS_FLOATING_WINDOW_LEVEL = 3
@@ -129,6 +129,41 @@ def set_macos_native_window_level(widget: QWidget, level: int) -> bool:
         if not native_window:
             return False
         send_void_integer(native_window, objc.sel_registerName(b"setLevel:"), int(level))
+        return True
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
+
+
+def macos_order_front_regardless(widget: QWidget) -> bool:
+    """Order the NSWindow forward without making it key or activating the app."""
+    app = QApplication.instance()
+    if (
+        sys.platform != "darwin"
+        or app is None
+        or app.platformName().lower() != "cocoa"
+    ):
+        return False
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        send_pointer = ctypes.CFUNCTYPE(
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        send_void = ctypes.CFUNCTYPE(
+            None,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )(("objc_msgSend", objc))
+        native_view = ctypes.c_void_p(int(widget.winId()))
+        native_window = send_pointer(native_view, objc.sel_registerName(b"window"))
+        if not native_window:
+            return False
+        send_void(native_window, objc.sel_registerName(b"orderFrontRegardless"))
         return True
     except (AttributeError, OSError, TypeError, ValueError):
         return False
@@ -393,6 +428,9 @@ class DesktopPet(QWidget):
         self.setMouseTracking(True)
         self._apply_window_flags()
         self.resize(CELL_WIDTH, CELL_HEIGHT)
+        app = QApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._handle_application_state_change)
 
         self._window_level_timer = QTimer(self)
         self._window_level_timer.setSingleShot(True)
@@ -514,6 +552,15 @@ class DesktopPet(QWidget):
             else MACOS_NORMAL_WINDOW_LEVEL
         )
         set_macos_native_window_level(self, level)
+        if self._always_on_top:
+            macos_order_front_regardless(self)
+
+    def _handle_application_state_change(self, state: Qt.ApplicationState) -> None:
+        del state
+        if self._always_on_top and self.isVisible():
+            # Defer until Qt/Cocoa has completed its own deactivation ordering.
+            # This never calls activateWindow or makes the pet the key window.
+            self._window_level_timer.start(0)
 
     def _sprite_alpha_at(self, position: QPoint) -> int:
         if not self.rect().contains(position):
@@ -1518,6 +1565,15 @@ def _schedule_self_test(
                 and native_level_enabled == MACOS_FLOATING_WINDOW_LEVEL
             )
         )
+        active_window_before_reorder = QApplication.activeWindow()
+        pet._handle_application_state_change(Qt.ApplicationState.ApplicationInactive)
+        QTest.qWait(20)
+        checks["inactive_reorder_keeps_floating_level"] = (
+            macos_native_window_level(pet) == MACOS_FLOATING_WINDOW_LEVEL
+        )
+        checks["inactive_reorder_does_not_steal_focus"] = (
+            QApplication.activeWindow() is active_window_before_reorder
+        )
         pet._set_mouse_passthrough(True)
         native_passthrough_enabled = macos_ignores_mouse_events(pet)
         pet._set_mouse_passthrough(False)
@@ -1581,6 +1637,8 @@ def _schedule_self_test(
             "top_toggle_keeps_position",
             "always_on_top_reenabled",
             "native_window_level_toggles",
+            "inactive_reorder_keeps_floating_level",
+            "inactive_reorder_does_not_steal_focus",
             "transparent_mouse_passthrough",
             "native_window_recreated",
             "mac_tool_window_stays_visible_when_inactive",

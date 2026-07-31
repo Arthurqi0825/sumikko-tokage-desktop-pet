@@ -159,6 +159,9 @@ class DesktopPetTests(unittest.TestCase):
         self.assertTrue(self.pet.isVisible())
         self.assertEqual(self.pet.pos(), position)
         self.assertNotEqual(native_id, 0)
+        self.pet._window_level_timer.stop()
+        self.pet._handle_application_state_change(Qt.ApplicationState.ApplicationInactive)
+        self.assertTrue(self.pet._window_level_timer.isActive())
 
     def test_transparent_sprite_pixels_are_mouse_passthrough(self) -> None:
         self.pet.play_state("idle")
