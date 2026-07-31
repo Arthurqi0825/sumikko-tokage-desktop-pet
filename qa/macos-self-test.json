@@ -1,6 +1,6 @@
 {
   "app": "Tokage Desktop Pet",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "environment": {
     "macOS": "26.5",
     "architecture": "arm64",
@@ -87,11 +87,11 @@
     "context_menu_complete": true,
     "context_default_action_labels": [
       "随机动作",
-      "保持待机",
-      "默认跳跃",
-      "默认躺下",
-      "默认挥手",
-      "默认等待"
+      "静态站立",
+      "静态跳跃",
+      "静态躺下",
+      "静态挥手",
+      "静态等待"
     ],
     "context_default_action_selected": true,
     "menu_bar_available": true,
@@ -122,16 +122,25 @@
     "menu_bar_controls_complete": true,
     "menu_bar_default_action_labels": [
       "随机动作",
-      "保持待机",
-      "默认跳跃",
-      "默认躺下",
-      "默认挥手",
-      "默认等待"
+      "静态站立",
+      "静态跳跃",
+      "静态躺下",
+      "静态挥手",
+      "静态等待"
     ],
     "menu_bar_default_action_selected": true,
     "default_action_menus_complete": true,
     "default_action_sync": true,
-    "default_action_execution": true,
+    "static_default_pose_cells": {
+      "idle": [0, 0],
+      "jumping": [4, 2],
+      "resting": [5, 4],
+      "waving": [3, 2],
+      "waiting": [6, 3]
+    },
+    "static_default_poses_complete": true,
+    "static_default_pose_timers_stopped": true,
+    "interaction_returns_to_static_default": true,
     "scaled_size": [240, 260],
     "paused": true,
     "resumed": true,

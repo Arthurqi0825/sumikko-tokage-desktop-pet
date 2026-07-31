@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 from src.desktop_pet import (
     ANIMATIONS,
     DEFAULT_ACTION_OPTIONS,
+    DEFAULT_POSE_CELLS,
     DEFAULT_ATLAS,
     DesktopPet,
     MenuBarController,
@@ -141,12 +142,18 @@ class DesktopPetTests(unittest.TestCase):
         self.assertEqual(self.pet.size().height(), 260)
 
     def test_default_action_controls_scheduler_and_persists(self) -> None:
-        self.pet.set_default_action("jumping", preview=False, persist=False)
+        self.pet.set_default_action("jumping", persist=False)
         self.pet.set_auto_actions(True)
-        self.pet.play_state("idle")
+        self.assertEqual(self.pet.state_name, "default-jumping")
+        self.assertEqual(self.pet._current_cell(), DEFAULT_POSE_CELLS["jumping"])
+        self.assertFalse(self.pet._frame_timer.isActive())
         self.pet._play_random_action()
-        self.assertEqual(self.pet.state_name, "jumping")
-        self.pet._cancel_jump_motion()
+        self.assertEqual(self.pet.state_name, "default-jumping")
+
+        self.pet.play_state("waving")
+        QTest.qWait(750)
+        self.assertEqual(self.pet.state_name, "default-jumping")
+        self.assertEqual(self.pet._current_cell(), DEFAULT_POSE_CELLS["jumping"])
 
         with tempfile.TemporaryDirectory() as directory:
             settings = QSettings(str(Path(directory) / "settings.ini"), QSettings.Format.IniFormat)
@@ -196,8 +203,8 @@ class DesktopPetTests(unittest.TestCase):
         self.assertIn("退出", labels)
         self.assertIn("明显跳跃", controller.interaction_labels())
         self.assertIn("躺下休息", controller.interaction_labels())
-        self.assertIn("默认跳跃", controller.default_action_labels())
-        self.assertIn("默认躺下", controller.default_action_labels())
+        self.assertIn("静态跳跃", controller.default_action_labels())
+        self.assertIn("静态躺下", controller.default_action_labels())
         self.pet.set_default_action("resting", preview=False, persist=False)
         controller._sync_state()
         self.assertTrue(controller.default_action_actions["resting"].isChecked())

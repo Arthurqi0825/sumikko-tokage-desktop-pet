@@ -34,19 +34,26 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon,
 CELL_WIDTH = 192
 CELL_HEIGHT = 208
 APP_NAME = "Tokage Desktop Pet"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 JUMP_HEIGHT = 96
 REACTION_HEIGHT = 22
 REST_HOLD_MS = 4200
 DEFAULT_ACTION_OPTIONS = (
     ("random", "随机动作"),
-    ("idle", "保持待机"),
-    ("jumping", "默认跳跃"),
-    ("resting", "默认躺下"),
-    ("waving", "默认挥手"),
-    ("waiting", "默认等待"),
+    ("idle", "静态站立"),
+    ("jumping", "静态跳跃"),
+    ("resting", "静态躺下"),
+    ("waving", "静态挥手"),
+    ("waiting", "静态等待"),
 )
 DEFAULT_ACTION_NAMES = {name for name, _ in DEFAULT_ACTION_OPTIONS}
+DEFAULT_POSE_CELLS = {
+    "idle": (0, 0),
+    "jumping": (4, 2),
+    "resting": (5, 4),
+    "waving": (3, 2),
+    "waiting": (6, 3),
+}
 
 
 def resource_root() -> Path:
@@ -210,6 +217,7 @@ class DesktopPet(QWidget):
         self._reaction_animation.finished.connect(self._finish_reaction_motion)
 
         self.move_to_bottom_right()
+        self._apply_default_pose()
         self._schedule_rest()
 
     @property
@@ -403,7 +411,7 @@ class DesktopPet(QWidget):
     def _try_auto_rest(self) -> None:
         if (
             self._auto_actions
-            and self._default_action in ("random", "resting")
+            and self._default_action == "random"
             and not self._paused
             and self._state_name == "idle"
         ):
@@ -415,7 +423,7 @@ class DesktopPet(QWidget):
         if (
             not self._auto_actions
             or self._paused
-            or self._default_action not in ("random", "resting")
+            or self._default_action != "random"
         ):
             self._rest_schedule_timer.stop()
             return
@@ -430,7 +438,24 @@ class DesktopPet(QWidget):
     def _return_to_idle(self) -> None:
         if self._paused or self._drag_offset is not None:
             return
-        self.play_state("idle")
+        self._apply_default_pose()
+
+    def _is_default_pose(self) -> bool:
+        return self._state_name.startswith("default-")
+
+    def _apply_default_pose(self) -> None:
+        if self._default_action == "random":
+            self.play_state("idle")
+            return
+        self._cancel_jump_motion()
+        self._cancel_reaction_motion()
+        self._rest_hold_timer.stop()
+        self._rest_phase = None
+        self._fixed_cell = DEFAULT_POSE_CELLS[self._default_action]
+        self._state_name = f"default-{self._default_action}"
+        self._frame_index = self._fixed_cell[1]
+        self._frame_timer.stop()
+        self.update()
 
     def _handle_single_click(self) -> None:
         if self._dragged:
@@ -454,18 +479,20 @@ class DesktopPet(QWidget):
         self.play_state(name)
 
     def _play_random_action(self) -> None:
-        if self._auto_actions and not self._paused and self._state_name == "idle":
-            action = self._default_action
-            if action == "random":
-                action = random.choice(
-                    ("waving", "jumping", "waiting", "running", "review", "resting", "resting")
-                )
-            if action != "idle":
-                self.play_state(action)
+        if (
+            self._auto_actions
+            and self._default_action == "random"
+            and not self._paused
+            and self._state_name == "idle"
+        ):
+            action = random.choice(
+                ("waving", "jumping", "waiting", "running", "review", "resting", "resting")
+            )
+            self.play_state(action)
         self._schedule_auto_action()
 
     def _schedule_auto_action(self) -> None:
-        if self._auto_actions and self._default_action != "idle":
+        if self._auto_actions and self._default_action == "random":
             self._auto_timer.start(random.randint(7000, 13000))
         else:
             self._auto_timer.stop()
@@ -578,7 +605,7 @@ class DesktopPet(QWidget):
             event.accept()
             return
 
-        if not self._paused and self._state_name == "idle":
+        if not self._paused and (self._state_name == "idle" or self._is_default_pose()):
             local = event.position()
             center = QPointF(self.width() / 2.0, self.height() / 2.0)
             vector = local - center
@@ -595,7 +622,7 @@ class DesktopPet(QWidget):
             self._press_global = None
             self.clamp_to_current_screen()
             if was_dragged:
-                self.play_state("idle")
+                self._return_to_idle()
             elif self._suppress_click_release:
                 self._suppress_click_release = False
             else:
@@ -709,7 +736,7 @@ class DesktopPet(QWidget):
             self._rest_hold_timer.stop()
             self._frame_timer.stop()
         else:
-            self.play_state("idle")
+            self._apply_default_pose()
             self._schedule_rest()
         self.update()
 
@@ -735,10 +762,7 @@ class DesktopPet(QWidget):
         self._schedule_rest()
         if not preview or self._paused:
             return
-        if name == "idle":
-            self.play_state("idle")
-        elif name != "random":
-            self.play_interaction(name, intense=name == "jumping")
+        self._apply_default_pose()
 
     def set_always_on_top(self, enabled: bool) -> None:
         position = self.pos()
@@ -784,7 +808,7 @@ class DesktopPet(QWidget):
             self,
             f"关于 {APP_NAME}",
             f"{APP_NAME} {APP_VERSION}\n\n"
-            "单击明显互动 · 双击跳跃 · 可设置默认动作 · 拖动显示跑动动画\n"
+            "单击明显互动 · 双击跳跃 · 可设置静态默认姿态 · 拖动显示跑动动画\n"
             "角色形象版权归 San-X Co., Ltd. 所有，仅供个人非商业实验。",
         )
 
@@ -984,6 +1008,8 @@ def _schedule_self_test(
     }
     checks = results["checks"]
     assert isinstance(checks, dict)
+    saved_default_action = pet.default_action
+    pet.set_default_action("random", persist=False)
     initial_frame = pet.frame_index
 
     def test_single_click() -> None:
@@ -1055,7 +1081,6 @@ def _schedule_self_test(
         test_controls()
 
     def test_controls() -> None:
-        original_default_action = pet.default_action
         pet.set_default_action("resting", preview=False, persist=False)
         mapped_cells: list[list[int]] = []
         for index in range(16):
@@ -1083,7 +1108,7 @@ def _schedule_self_test(
             for label in ("挥手", "跳一跳", "躺下休息", "等待", "有点难过")
         )
         checks["context_default_action_selected"] = any(
-            action.text() == "默认躺下" and action.isChecked()
+            action.text() == "静态躺下" and action.isChecked()
             for action in default_submenu.actions()
         )
         checks["menu_bar_available"] = menu_bar.available
@@ -1121,14 +1146,26 @@ def _schedule_self_test(
             label in checks["menu_bar_interaction_labels"] for label in ("明显跳跃", "躺下休息")
         )
 
-        pet.set_auto_actions(True)
-        pet.set_default_action("jumping", preview=False, persist=False)
-        pet.play_state("idle")
-        pet._play_random_action()
-        checks["default_action_execution"] = pet.state_name == "jumping"
-        pet._cancel_jump_motion()
-        pet.set_default_action(original_default_action, preview=False, persist=False)
-        pet.play_state("idle")
+        static_pose_cells: dict[str, list[int]] = {}
+        static_pose_timers_stopped = True
+        for name in DEFAULT_POSE_CELLS:
+            pet.set_default_action(name, persist=False)
+            static_pose_cells[name] = list(pet._current_cell())
+            static_pose_timers_stopped = static_pose_timers_stopped and not pet._frame_timer.isActive()
+        checks["static_default_pose_cells"] = static_pose_cells
+        checks["static_default_poses_complete"] = static_pose_cells == {
+            name: list(cell) for name, cell in DEFAULT_POSE_CELLS.items()
+        }
+        checks["static_default_pose_timers_stopped"] = static_pose_timers_stopped
+        pet.set_default_action("jumping", persist=False)
+        pet.play_state("waving")
+        QTest.qWait(750)
+        checks["interaction_returns_to_static_default"] = (
+            pet.state_name == "default-jumping"
+            and pet._current_cell() == DEFAULT_POSE_CELLS["jumping"]
+        )
+        pet.set_default_action(saved_default_action, preview=False, persist=False)
+        pet._apply_default_pose()
         pet.set_display_scale(1.25)
         checks["scaled_size"] = [pet.width(), pet.height()]
         pet.toggle_pause()
@@ -1159,7 +1196,9 @@ def _schedule_self_test(
             "menu_bar_controls_complete",
             "default_action_menus_complete",
             "default_action_sync",
-            "default_action_execution",
+            "static_default_poses_complete",
+            "static_default_pose_timers_stopped",
+            "interaction_returns_to_static_default",
             "paused",
             "resumed",
             "transparent_background",
